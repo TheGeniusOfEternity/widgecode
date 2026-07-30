@@ -13,6 +13,7 @@ import {
 } from './config';
 import styles from './App.module.css';
 import './Theme.module.css';
+import { Sidebar } from '../widgets/sidebar';
 
 type AuthTab = 'signin' | 'signup';
 
@@ -74,44 +75,66 @@ export const App = () => {
 
         <main className={isAuthorized ? styles.authorizedShell : styles.landingLayout}>
           {isAuthorized ? (
-            <section className={styles.galleryPage} id="widgets-gallery">
-              <div className={`${styles.galleryHeading} ${styles.glass}`}>
-                <div>
-                  <p className={styles.eyebrow}>{t.gallery}</p>
-                  <h1>{t.widgets}</h1>
+            <>
+              <Sidebar
+                username={t.profile}
+                locale={locale}
+                theme={theme}
+                widgetNames={widgets.map((widget) => widget.title)}
+                labels={{
+                  home: t.home,
+                  chats: t.chats,
+                  newNote: t.newNote,
+                  logout: t.logout,
+                  createWidget: t.createWidget,
+                  language: t.language,
+                  theme: t.theme,
+                  recentWidgets: t.recentWidgets,
+                }}
+                onLocaleToggle={() => setLocale(locale === 'en' ? 'ru' : 'en')}
+                onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                onCreateWidget={() => undefined}
+                onLogout={() => setAuthorized(false)}
+              />
+              <section className={styles.galleryPage} id="widgets-gallery">
+                <div className={`${styles.galleryHeading} ${styles.glass}`}>
+                  <div>
+                    <p className={styles.eyebrow}>{t.gallery}</p>
+                    <h1>{t.widgets}</h1>
+                  </div>
+                  <Button view="action" size="l">
+                    {t.createWidget}
+                  </Button>
                 </div>
-                <Button view="action" size="l">
-                  {t.createWidget}
-                </Button>
-              </div>
-              <div className={`${styles.widgetGrid} ${styles.widgetGalleryGrid}`}>
-                {widgets.map((widget) => (
-                  <Card
-                    key={widget.title}
-                    className={`${styles.glass} ${styles.widgetCard} ${accentClass[widget.accent]}`}
-                    view="clear"
-                  >
-                    <div className={styles.widgetPreview}>
-                      <span>{widget.metric}</span>
-                    </div>
-                    <div className={styles.widgetMeta}>
-                      <div>
-                        <h3>{widget.title}</h3>
-                        <p>{widget.source}</p>
+                <div className={`${styles.widgetGrid} ${styles.widgetGalleryGrid}`}>
+                  {widgets.map((widget) => (
+                    <Card
+                      key={widget.title}
+                      className={`${styles.glass} ${styles.widgetCard} ${accentClass[widget.accent]}`}
+                      view="clear"
+                    >
+                      <div className={styles.widgetPreview}>
+                        <span>{widget.metric}</span>
                       </div>
-                      <span className={styles.glassPill}>
-                        {widget.status === 'active' ? t.active : t.draft}
-                      </span>
-                    </div>
-                    <p className={styles.widgetDate}>{t.updated}: 30 Jul</p>
-                    <div className={styles.cardActions}>
-                      <Button view="outlined">{t.open}</Button>
-                      <Button view="outlined">{t.configure}</Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </section>
+                      <div className={styles.widgetMeta}>
+                        <div>
+                          <h3>{widget.title}</h3>
+                          <p>{widget.source}</p>
+                        </div>
+                        <span className={styles.glassPill}>
+                          {widget.status === 'active' ? t.active : t.draft}
+                        </span>
+                      </div>
+                      <p className={styles.widgetDate}>{t.updated}: 30 Jul</p>
+                      <div className={styles.cardActions}>
+                        <Button view="outlined">{t.open}</Button>
+                        <Button view="outlined">{t.configure}</Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            </>
           ) : (
             <>
               <section className={`${styles.heroPanel} ${styles.glass}`}>

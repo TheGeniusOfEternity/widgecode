@@ -104,20 +104,24 @@
 .authorizedShell {
   position: relative;
   z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  height: 100%;
   max-width: 72rem;
   min-height: calc(100vh - 48px);
   margin: 0 auto;
+  gap: 1rem;
 }
 
 .galleryPage {
+  width: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
-  gap: 18px;
-  min-width: 0;
-  height: 100vh;
+  gap: 1rem;
+  height: calc(100vh - 48px);
   overflow: hidden;
-  padding: 24px 0;
+  padding: 0;
 }
 
 .galleryHeading {
@@ -608,6 +612,7 @@
   }
 
   .galleryPage {
+    height: calc(100vh - 28px);
     padding: 0 0 28px;
   }
 
@@ -672,6 +677,15 @@
   .landingLayout {
     margin-top: 10px;
     gap: 20px;
+  }
+
+  .authorizedShell {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .galleryPage {
+    height: calc(100vh - 20px);
   }
 
   .galleryHeading {

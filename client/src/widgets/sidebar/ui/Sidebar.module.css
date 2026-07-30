@@ -1,0 +1,159 @@
+:root {
+  --sidebar-width: 3rem;
+
+  --g-button-height: var(--sidebar-width);
+}
+
+.sidebar {
+  box-sizing: content-box;
+  min-width: var(--sidebar-width);
+  width: 0;
+  background: linear-gradient(145deg, var(--glass-strong), var(--glass));
+  border-radius: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1rem;
+  overflow: hidden;
+  transition: min-width 0.2s;
+}
+
+.sidebarContent {
+  min-width: 0;
+}
+
+.userContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--sidebar-width);
+  gap: 0.75rem;
+}
+
+.username {
+  position: absolute;
+  color: var(--action-active);
+  font-size: 1.25rem;
+  font-weight: 800;
+  opacity: 1;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.sidebar:not(.expanded) .username {
+  width: 0;
+  opacity: 0;
+}
+
+.divider {
+  height: 2px;
+  margin: 1.5rem 0 1rem;
+  border-radius: 999px;
+  background: var(--action-active);
+  opacity: 0.7;
+}
+
+.recentWidgets {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.recentTitle {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+  margin: 0.5rem 0;
+}
+
+.sidebar:not(.expanded) .recentTitle,
+.sidebar:not(.expanded) .recentLabel {
+  opacity: 0;
+}
+
+.recentItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--sidebar-width);
+  gap: 0.75rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.75rem;
+  padding: 0 0.5rem;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.recentItem:hover {
+  background: color-mix(in srgb, var(--action) 12%, transparent);
+}
+
+.recentIcon {
+  display: block;
+  flex: 0 0 0.5rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--action);
+}
+
+.recentLabel {
+  overflow: hidden;
+  min-width: 0;
+  opacity: 1;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.expanded {
+  min-width: 15rem;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.btnWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+
+  .button {
+    position: absolute;
+    width: 100%;
+    opacity: 1;
+    transition: opacity 0.1s;
+  }
+
+  .hidden {
+    opacity: 0;
+  }
+}
+
+.btnIcon {
+  display: flex;
+  height: var(--sidebar-width);
+  width: var(--sidebar-width);
+}
+
+.toggle {
+  margin-left: auto;
+  transform: rotate(180deg);
+  transition: all 0.2s;
+}
+
+.toggleExpanded {
+  transform: rotate(0deg);
+}
