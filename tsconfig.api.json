@@ -10,6 +10,5 @@
     },
     "types": ["node"]
   },
-  "include": ["api/**/*.ts", "server/src/**/*.ts"],
-  "exclude": ["server/src/**/*.test.ts"]
+  "include": ["api/**/*.ts"]
 }
