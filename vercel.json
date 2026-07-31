@@ -11,7 +11,7 @@
     }
   ],
   "functions": {
-    "api/[...route].ts": {
+    "api/**/*.ts": {
       "maxDuration": 30
     }
   }
