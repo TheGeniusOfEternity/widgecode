@@ -9,6 +9,7 @@ import { LandingHeader, LandingPage } from '../pages/landing';
 import { WidgetsGalleryPage } from '../pages/widgets-gallery';
 import { API_BASE_URL } from '../shared/api';
 import { widgets } from '../shared/locale/content';
+import { AuthTransitionLoader } from '../shared/ui/auth-transition-loader/AuthTransitionLoader';
 import {
   APP_LOCALE_STORAGE_KEY,
   APP_THEME_STORAGE_KEY,
@@ -50,6 +51,7 @@ export const App = () => {
   const [themeReveal, setThemeReveal] = useState<ThemeRevealState | null>(null);
   const [isLocaleTransitioning, setLocaleTransitioning] = useState(false);
   const [isBootstrapped, setBootstrapped] = useState(false);
+  const [isLoggingOut, setLoggingOut] = useState(false);
   const authStatus = useAuthStore((state) => state.status);
   const authUser = useAuthStore((state) => state.user);
   const authError = useAuthStore((state) => state.error);
@@ -168,8 +170,15 @@ export const App = () => {
   };
 
   const handleLogout = async () => {
-    await useAuthStore.getState().logout();
-    navigate('/');
+    setLoggingOut(true);
+    try {
+      await useAuthStore.getState().logout();
+    } catch {
+      // The local auth state is cleared by the store even if the API is unavailable.
+    } finally {
+      navigate('/');
+      setLoggingOut(false);
+    }
   };
 
   useEffect(() => {
@@ -182,6 +191,7 @@ export const App = () => {
   }, [locale]);
 
   const isAuthorized = authStatus === 'authenticated';
+  const isAuthTransitioning = !isBootstrapped || isLoggingOut || route === 'callback';
   const oauthError =
     route === 'auth' && new URLSearchParams(window.location.search).has('oauth_error')
       ? locale === 'ru'
@@ -195,83 +205,85 @@ export const App = () => {
       <div className={styles.appShell}>
         <div className={`${styles.orb} ${styles.orbLavender}`} />
         <div className={`${styles.orb} ${styles.orbBlue}`} />
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            className={styles.motionDiv}
-            key={route}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
-            transition={{ duration: 0.24, ease: 'easeOut' }}
-          >
-            {route === 'landing' && (
-              <LandingHeader
-                locale={locale}
-                theme={theme}
-                isAuthorized={isAuthorized}
-                onAuthNavigate={() => navigate('/register')}
-                onDashboardNavigate={() => navigate('/dashboard')}
-                onLogout={handleLogout}
-                onLocaleToggle={handleLocaleToggle}
-                onThemeToggle={handleThemeToggle}
-              />
-            )}
-            <main
-              className={
-                route === 'dashboard' && isAuthorized
-                  ? styles.authorizedShell
-                  : route === 'auth' || route === 'callback' || route === 'dashboard'
-                    ? styles.authRoute
-                    : styles.landingLayout
-              }
+        {isAuthTransitioning ? (
+          <AuthTransitionLoader locale={locale} reducedMotion={Boolean(prefersReducedMotion)} />
+        ) : (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              className={styles.motionDiv}
+              key={route}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
+              transition={{ duration: 0.24, ease: 'easeOut' }}
             >
-              {route === 'dashboard' ? (
-                isAuthorized ? (
-                  <WidgetsGalleryPage
-                    locale={locale}
-                    theme={theme}
-                    username={username}
-                    widgets={visibleWidgets}
-                    isLanguageLoading={isLocaleTransitioning}
-                    onLocaleToggle={handleLocaleToggle}
-                    onThemeToggle={handleThemeToggle}
-                    onCreateWidget={() => undefined}
-                    onLogout={handleLogout}
-                    onDeleteWidget={(title) =>
-                      setVisibleWidgets((currentWidgets) =>
-                        currentWidgets.filter((currentWidget) => currentWidget.title !== title),
-                      )
-                    }
-                  />
-                ) : (
-                  <div>
-                    {locale === 'ru' ? 'Проверяем авторизацию…' : 'Checking authentication…'}
-                  </div>
-                )
-              ) : route === 'auth' ? (
-                <AuthPage
-                  authTab={authTab}
+              {route === 'landing' && (
+                <LandingHeader
                   locale={locale}
-                  onAuthTabChange={handleAuthTabChange}
-                  isSubmitting={authStatus === 'loading'}
-                  error={authError || oauthError}
-                  onSubmit={handleAuthSubmit}
-                  onYandexAuth={() => window.location.assign(`${API_BASE_URL}/auth/yandex`)}
-                />
-              ) : route === 'callback' ? (
-                <div>{locale === 'ru' ? 'Завершаем вход…' : 'Completing sign-in…'}</div>
-              ) : (
-                <LandingPage
-                  locale={locale}
+                  theme={theme}
                   isAuthorized={isAuthorized}
-                  onAuthNavigate={() =>
-                    isAuthorized ? navigate('/dashboard') : navigate('/register')
-                  }
+                  onAuthNavigate={() => navigate('/register')}
+                  onDashboardNavigate={() => navigate('/dashboard')}
+                  onLogout={handleLogout}
+                  onLocaleToggle={handleLocaleToggle}
+                  onThemeToggle={handleThemeToggle}
                 />
               )}
-            </main>
-          </motion.div>
-        </AnimatePresence>
+              <main
+                className={
+                  route === 'dashboard' && isAuthorized
+                    ? styles.authorizedShell
+                    : route === 'auth' || route === 'dashboard'
+                      ? styles.authRoute
+                      : styles.landingLayout
+                }
+              >
+                {route === 'dashboard' ? (
+                  isAuthorized ? (
+                    <WidgetsGalleryPage
+                      locale={locale}
+                      theme={theme}
+                      username={username}
+                      widgets={visibleWidgets}
+                      isLanguageLoading={isLocaleTransitioning}
+                      onLocaleToggle={handleLocaleToggle}
+                      onThemeToggle={handleThemeToggle}
+                      onCreateWidget={() => undefined}
+                      onLogout={handleLogout}
+                      onDeleteWidget={(title) =>
+                        setVisibleWidgets((currentWidgets) =>
+                          currentWidgets.filter((currentWidget) => currentWidget.title !== title),
+                        )
+                      }
+                    />
+                  ) : (
+                    <div>
+                      {locale === 'ru' ? 'Проверяем авторизацию…' : 'Checking authentication…'}
+                    </div>
+                  )
+                ) : route === 'auth' ? (
+                  <AuthPage
+                    authTab={authTab}
+                    locale={locale}
+                    onAuthTabChange={handleAuthTabChange}
+                    isSubmitting={authStatus === 'loading'}
+                    error={authError || oauthError}
+                    onSubmit={handleAuthSubmit}
+                    onYandexAuth={() => window.location.assign(`${API_BASE_URL}/auth/yandex`)}
+                  />
+                ) : (
+                  <LandingPage
+                    locale={locale}
+                    isAuthorized={isAuthorized}
+                    onAuthNavigate={() =>
+                      isAuthorized ? navigate('/dashboard') : navigate('/register')
+                    }
+                  />
+                )}
+              </main>
+            </motion.div>
+          </AnimatePresence>
+        )}
         <ThemeReveal reveal={themeReveal} onComplete={() => setThemeReveal(null)} />
       </div>
     </ThemeProvider>

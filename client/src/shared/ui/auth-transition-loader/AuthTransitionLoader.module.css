@@ -1,0 +1,222 @@
+.loader {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  width: min(100%, 360px);
+  flex-direction: column;
+  align-items: center;
+  padding: 44px 32px;
+  text-align: center;
+}
+
+.loaderVisual {
+  position: relative;
+  width: 136px;
+  height: 136px;
+  margin-bottom: 28px;
+}
+
+.loaderVisual::before,
+.loaderVisual::after {
+  position: absolute;
+  content: '';
+  border-radius: 50%;
+}
+
+.loaderVisual::before {
+  inset: 18px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--lavender) 34%, transparent),
+    transparent 68%
+  );
+  filter: blur(8px);
+}
+
+.loaderVisual::after {
+  inset: 42px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  background: color-mix(in srgb, var(--glass-strong) 78%, transparent);
+  box-shadow:
+    0 0 0 8px color-mix(in srgb, var(--glass) 30%, transparent),
+    0 12px 28px color-mix(in srgb, var(--action) 24%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.orbit {
+  position: absolute;
+  inset: 9px;
+  border: 1px solid color-mix(in srgb, var(--lavender) 44%, transparent);
+  border-radius: 50%;
+}
+
+.orbitWide {
+  transform: rotate(32deg) scaleX(0.54);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--lavender) 28%, transparent);
+  animation: loader-orbit-wide 3.2s ease-in-out infinite;
+}
+
+.orbitTight {
+  inset: 22px;
+  transform: rotate(-48deg) scaleY(0.62);
+  border-color: color-mix(in srgb, var(--blue) 42%, transparent);
+  animation: loader-orbit-tight 2.6s ease-in-out infinite reverse;
+}
+
+.dot {
+  position: absolute;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 14px currentColor;
+}
+
+.dotLavender {
+  top: 12px;
+  left: 54px;
+  color: var(--lavender);
+  background: currentColor;
+  animation: loader-dot-lavender 2.4s ease-in-out infinite;
+}
+
+.dotMint {
+  right: 8px;
+  bottom: 38px;
+  color: var(--mint);
+  background: currentColor;
+  animation: loader-dot-mint 2.8s ease-in-out infinite;
+}
+
+.dotBlue {
+  bottom: 10px;
+  left: 34px;
+  color: var(--blue);
+  background: currentColor;
+  animation: loader-dot-blue 2.2s ease-in-out infinite;
+}
+
+.loaderCore {
+  position: absolute;
+  z-index: 2;
+  inset: 49px;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.12em;
+  text-indent: -0.12em;
+  animation: loader-core-pulse 2s ease-in-out infinite;
+}
+
+.loaderTitle {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.loaderSubtitle {
+  margin: 8px 0 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.progressTrack {
+  position: relative;
+  display: block;
+  width: 132px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 65%, transparent);
+}
+
+.progressBar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lavender), var(--blue), var(--mint));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--blue) 60%, transparent);
+  animation: loader-progress 1.8s ease-in-out infinite;
+}
+
+.loaderReduced * {
+  animation: none;
+}
+
+@keyframes loader-orbit-wide {
+  0%,
+  100% {
+    transform: rotate(32deg) scaleX(0.54) scaleY(1);
+  }
+  50% {
+    transform: rotate(212deg) scaleX(0.68) scaleY(0.82);
+  }
+}
+
+@keyframes loader-orbit-tight {
+  0%,
+  100% {
+    transform: rotate(-48deg) scaleY(0.62);
+  }
+  50% {
+    transform: rotate(132deg) scaleY(0.8);
+  }
+}
+
+@keyframes loader-dot-lavender {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(14px, 4px);
+  }
+}
+
+@keyframes loader-dot-mint {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-7px, 12px);
+  }
+}
+
+@keyframes loader-dot-blue {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-12px, -5px);
+  }
+}
+
+@keyframes loader-core-pulse {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes loader-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  55%,
+  100% {
+    transform: translateX(320%);
+  }
+}
