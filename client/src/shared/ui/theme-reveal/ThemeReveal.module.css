@@ -1,0 +1,7 @@
+.themeReveal {
+  position: fixed;
+  z-index: 20;
+  pointer-events: none;
+  border-radius: 50%;
+  will-change: transform, opacity;
+}

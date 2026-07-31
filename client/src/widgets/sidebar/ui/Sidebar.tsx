@@ -7,16 +7,13 @@ import {
   Plus,
   Sun,
 } from '@gravity-ui/icons';
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 
 import type { AppTheme, Locale } from '../../../app/config';
 import styles from './Sidebar.module.css';
 import { Button, Icon } from '@gravity-ui/uikit';
 
 export type SidebarLabels = {
-  home: string;
-  chats: string;
-  newNote: string;
   logout: string;
   createWidget: string;
   language: string;
@@ -31,9 +28,10 @@ type SidebarProps = {
   labels: SidebarLabels;
   widgetNames: readonly string[];
   onLocaleToggle: () => void;
-  onThemeToggle: () => void;
+  onThemeToggle: (event: MouseEvent<HTMLButtonElement>) => void;
   onCreateWidget: () => void;
   onLogout: () => void;
+  isLanguageLoading: boolean;
 };
 
 export const Sidebar = ({
@@ -46,6 +44,7 @@ export const Sidebar = ({
   onThemeToggle,
   onCreateWidget,
   onLogout,
+  isLanguageLoading,
 }: SidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -53,7 +52,9 @@ export const Sidebar = ({
     <aside className={[styles.sidebar, isExpanded ? styles.expanded : ''].join(' ')}>
       <div className={styles.sidebarContent}>
         <div className={styles.userContainer}>
-          <span className={styles.username}>{username}</span>
+          <span className={`${styles.username} ${isLanguageLoading ? styles.textSkeleton : ''}`}>
+            {isLanguageLoading ? '' : username}
+          </span>
           <Button
             onClick={() => setIsExpanded(!isExpanded)}
             size="xl"
@@ -68,7 +69,9 @@ export const Sidebar = ({
         <div className={styles.divider} />
 
         <section className={styles.recentWidgets} aria-label={labels.recentWidgets}>
-          <span className={styles.recentTitle}>{labels.recentWidgets}</span>
+          <span className={`${styles.recentTitle} ${isLanguageLoading ? styles.textSkeleton : ''}`}>
+            {isLanguageLoading ? '' : labels.recentWidgets}
+          </span>
           {widgetNames.map((widgetName) => (
             <div className={styles.btnWrapper} key={widgetName}>
               <Button
@@ -77,7 +80,9 @@ export const Sidebar = ({
                 view="outlined"
                 className={[styles.button, !isExpanded ? styles.hidden : ''].join(' ')}
               >
-                {widgetName}
+                <span className={isLanguageLoading ? styles.textSkeleton : ''}>
+                  {isLanguageLoading ? '' : widgetName}
+                </span>
               </Button>
               <Button
                 size="xl"
@@ -101,7 +106,9 @@ export const Sidebar = ({
             view="outlined-action"
             className={[styles.button, !isExpanded ? styles.hidden : ''].join(' ')}
           >
-            {labels.theme}: {theme}
+            <span className={isLanguageLoading ? styles.textSkeleton : ''}>
+              {isLanguageLoading ? '' : `${labels.theme}: ${theme}`}
+            </span>
           </Button>
           <Button
             size="xl"
@@ -120,7 +127,9 @@ export const Sidebar = ({
             view="outlined-action"
             className={[styles.button, !isExpanded ? styles.hidden : ''].join(' ')}
           >
-            {labels.language}: {locale.toUpperCase()}
+            <span className={isLanguageLoading ? styles.textSkeleton : ''}>
+              {isLanguageLoading ? '' : `${labels.language}: ${locale.toUpperCase()}`}
+            </span>
           </Button>
           <Button
             size="xl"
@@ -139,7 +148,9 @@ export const Sidebar = ({
             view="action"
             className={[styles.button, !isExpanded ? styles.hidden : ''].join(' ')}
           >
-            {labels.createWidget}
+            <span className={isLanguageLoading ? styles.textSkeleton : ''}>
+              {isLanguageLoading ? '' : labels.createWidget}
+            </span>
           </Button>
           <Button
             size="xl"
@@ -158,7 +169,9 @@ export const Sidebar = ({
             view="outlined"
             className={[styles.button, !isExpanded ? styles.hidden : ''].join(' ')}
           >
-            {labels.logout}
+            <span className={isLanguageLoading ? styles.textSkeleton : ''}>
+              {isLanguageLoading ? '' : labels.logout}
+            </span>
           </Button>
           <Button
             size="xl"

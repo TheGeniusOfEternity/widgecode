@@ -133,3 +133,7 @@
   --g-button-text-color-hover: #fff;
   --g-button-text-color-active: #fff;
 }
+
+:global(.g-button:active) {
+  transform: none;
+}

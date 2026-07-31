@@ -1,28 +1,27 @@
-import { Button, Card, Switch, Tab, TabList, TextInput, ThemeProvider } from '@gravity-ui/uikit';
-import { useEffect, useState } from 'react';
+import { ThemeProvider } from '@gravity-ui/uikit';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useEffect, useState, type MouseEvent } from 'react';
 
+import { AuthPage, type AuthTab } from '../pages/auth';
+import { LandingHeader, LandingPage } from '../pages/landing';
+import { WidgetsGalleryPage } from '../pages/widgets-gallery';
+import type { WidgetCardData } from '../entities/widget';
 import {
   APP_LOCALE_STORAGE_KEY,
   APP_THEME_STORAGE_KEY,
   getSystemLocale,
   getSystemTheme,
-  messages,
-  widgets,
   type AppTheme,
   type Locale,
 } from './config';
+import { widgets } from '../shared/locale/content';
+import { ThemeReveal, type ThemeRevealState } from '../shared/ui/theme-reveal';
 import styles from './App.module.css';
 import './Theme.module.css';
-import { Sidebar } from '../widgets/sidebar';
 
-type AuthTab = 'signin' | 'signup';
+type AppRoute = 'landing' | 'auth';
 
-const accentClass = {
-  lavender: styles.accentLavender,
-  mint: styles.accentMint,
-  blue: styles.accentBlue,
-  violet: styles.accentViolet,
-} as const;
+const getRoute = (): AppRoute => (window.location.pathname === '/auth' ? 'auth' : 'landing');
 
 export const App = () => {
   const [theme, setTheme] = useState<AppTheme>(
@@ -32,8 +31,63 @@ export const App = () => {
     () => (localStorage.getItem(APP_LOCALE_STORAGE_KEY) as Locale) || getSystemLocale(),
   );
   const [isAuthorized, setAuthorized] = useState(false);
+  const [route, setRoute] = useState<AppRoute>(getRoute);
+  const [visibleWidgets, setVisibleWidgets] = useState<WidgetCardData[]>(() => [...widgets]);
   const [authTab, setAuthTab] = useState<AuthTab>('signin');
-  const t = messages[locale];
+  const [themeReveal, setThemeReveal] = useState<ThemeRevealState | null>(null);
+  const [isLocaleTransitioning, setLocaleTransitioning] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+
+  const navigateToAuth = () => {
+    window.history.pushState({}, '', '/auth');
+    setRoute('auth');
+  };
+
+  useEffect(() => {
+    const handlePopState = () => setRoute(getRoute());
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleLocaleToggle = () => {
+    if (isLocaleTransitioning) return;
+
+    const nextLocale = locale === 'en' ? 'ru' : 'en';
+    if (prefersReducedMotion) {
+      setLocale(nextLocale);
+      return;
+    }
+
+    setLocaleTransitioning(true);
+    window.setTimeout(() => setLocale(nextLocale), 140);
+    window.setTimeout(() => setLocaleTransitioning(false), 360);
+  };
+
+  const handleThemeToggle = (event: MouseEvent<HTMLButtonElement>) => {
+    if (themeReveal) return;
+
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    const buttonBounds = event.currentTarget.getBoundingClientRect();
+    const x = buttonBounds.left + buttonBounds.width / 2;
+    const y = buttonBounds.top + buttonBounds.height / 2;
+
+    if (prefersReducedMotion) {
+      setTheme(nextTheme);
+      return;
+    }
+
+    const radius =
+      Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)) + 2;
+
+    setThemeReveal({
+      left: x - radius,
+      top: y - radius,
+      diameter: radius * 2,
+      color: nextTheme === 'dark' ? '#11101a' : '#f6f1eb',
+    });
+
+    window.setTimeout(() => setTheme(nextTheme), 400);
+  };
 
   useEffect(() => {
     localStorage.setItem(APP_THEME_STORAGE_KEY, theme);
@@ -49,158 +103,62 @@ export const App = () => {
       <div className={styles.appShell}>
         <div className={`${styles.orb} ${styles.orbLavender}`} />
         <div className={`${styles.orb} ${styles.orbBlue}`} />
-        {!isAuthorized && (
-          <header className={`${styles.glass} ${styles.headerPanel}`}>
-            <Button href="#auth-form" view="outlined" size="xl">
-              {t.authCta}
-            </Button>
-            <div className={styles.headerControls}>
-              <Button
-                size="xl"
-                type="button"
-                view="outlined"
-                onClick={() => setLocale(locale === 'en' ? 'ru' : 'en')}
-              >
-                {locale.toUpperCase()}
-              </Button>
-              <Switch
-                checked={theme === 'dark'}
-                onUpdate={(checked) => setTheme(checked ? 'dark' : 'light')}
-                content={theme}
-              />
-              <Switch checked={isAuthorized} onUpdate={setAuthorized} content={t.demoAuth} />
-            </div>
-          </header>
-        )}
-
-        <main className={isAuthorized ? styles.authorizedShell : styles.landingLayout}>
-          {isAuthorized ? (
-            <>
-              <Sidebar
-                username={t.profile}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            className={styles.motionDiv}
+            key={isAuthorized ? 'gallery' : route}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+          >
+            {!isAuthorized && route === 'landing' && (
+              <LandingHeader
                 locale={locale}
                 theme={theme}
-                widgetNames={widgets.map((widget) => widget.title)}
-                labels={{
-                  home: t.home,
-                  chats: t.chats,
-                  newNote: t.newNote,
-                  logout: t.logout,
-                  createWidget: t.createWidget,
-                  language: t.language,
-                  theme: t.theme,
-                  recentWidgets: t.recentWidgets,
-                }}
-                onLocaleToggle={() => setLocale(locale === 'en' ? 'ru' : 'en')}
-                onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                onCreateWidget={() => undefined}
-                onLogout={() => setAuthorized(false)}
+                isAuthorized={isAuthorized}
+                onAuthNavigate={navigateToAuth}
+                onLocaleToggle={handleLocaleToggle}
+                onThemeToggle={handleThemeToggle}
+                onAuthorizationToggle={setAuthorized}
               />
-              <section className={styles.galleryPage} id="widgets-gallery">
-                <div className={`${styles.galleryHeading} ${styles.glass}`}>
-                  <div>
-                    <p className={styles.eyebrow}>{t.gallery}</p>
-                    <h1>{t.widgets}</h1>
-                  </div>
-                  <Button view="action" size="l">
-                    {t.createWidget}
-                  </Button>
-                </div>
-                <div className={`${styles.widgetGrid} ${styles.widgetGalleryGrid}`}>
-                  {widgets.map((widget) => (
-                    <Card
-                      key={widget.title}
-                      className={`${styles.glass} ${styles.widgetCard} ${accentClass[widget.accent]}`}
-                      view="clear"
-                    >
-                      <div className={styles.widgetPreview}>
-                        <span>{widget.metric}</span>
-                      </div>
-                      <div className={styles.widgetMeta}>
-                        <div>
-                          <h3>{widget.title}</h3>
-                          <p>{widget.source}</p>
-                        </div>
-                        <span className={styles.glassPill}>
-                          {widget.status === 'active' ? t.active : t.draft}
-                        </span>
-                      </div>
-                      <p className={styles.widgetDate}>{t.updated}: 30 Jul</p>
-                      <div className={styles.cardActions}>
-                        <Button view="outlined">{t.open}</Button>
-                        <Button view="outlined">{t.configure}</Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-            </>
-          ) : (
-            <>
-              <section className={`${styles.heroPanel} ${styles.glass}`}>
-                <p className={styles.eyebrow}>{t.eyebrow}</p>
-                <h1>{t.title}</h1>
-                <p>{t.subtitle}</p>
-                <div className={styles.heroActions}>
-                  <div className={styles.heroStats}>
-                    <span className={styles.glassPill}>Glass UI</span>
-                    <span className={styles.glassPill}>Gravity UI</span>
-                    <span className={styles.glassPill}>Lavender theme</span>
-                  </div>
-                  <Button href="#auth-form" view="action" size="xl">
-                    {t.authCta}
-                  </Button>
-                </div>
-              </section>
-              <Card
-                className={`${styles.glass} ${styles.authCard} ${authTab === 'signin' ? styles.authCardSignin : styles.authCardSignup}`}
-                view="clear"
-                id="auth-form"
-              >
-                <div className={styles.authAbstract} aria-hidden="true">
-                  <div className={`${styles.abstractWindow} ${styles.abstractWindowMain}`}>
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <div className={`${styles.abstractWindow} ${styles.abstractWindowSmall}`} />
-                </div>
-                <div className={styles.authContent}>
-                  <div
-                    key={`${authTab}-heading`}
-                    className={`${styles.authHeading} ${styles.authFormAnimated}`}
-                  >
-                    <h2>{authTab === 'signin' ? t.signinTitle : t.signupTitle}</h2>
-                    <p>{authTab === 'signin' ? t.signinSubtitle : t.signupSubtitle}</p>
-                  </div>
-                  <TabList
-                    value={authTab}
-                    onUpdate={(value) => setAuthTab(value as AuthTab)}
-                    size="l"
-                  >
-                    <Tab value="signin">{t.signin}</Tab>
-                    <Tab value="signup">{t.signup}</Tab>
-                  </TabList>
-                  <div key={authTab} className={`${styles.authForm} ${styles.authFormAnimated}`}>
-                    <Button view="outlined-action" size="xl" width="max">
-                      <span className={styles.yandexMark}>Я</span>
-                      {t.oauthYandex}
-                    </Button>
-                    <div className={styles.authDivider}>
-                      <span>{t.orEmail}</span>
-                    </div>
-                    {authTab === 'signup' && <TextInput size="l" placeholder={t.name} />}
-                    <TextInput size="l" placeholder={t.email} />
-                    <TextInput size="l" placeholder={t.password} type="password" />
-                    <Button view="action" size="xl" width="max">
-                      {t.continue}
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            </>
-          )}
-        </main>
+            )}
+            <main
+              className={
+                isAuthorized
+                  ? styles.authorizedShell
+                  : route === 'auth'
+                    ? styles.authRoute
+                    : styles.landingLayout
+              }
+            >
+              {isAuthorized ? (
+                <>
+                  <WidgetsGalleryPage
+                    locale={locale}
+                    theme={theme}
+                    widgets={visibleWidgets}
+                    isLanguageLoading={isLocaleTransitioning}
+                    onLocaleToggle={handleLocaleToggle}
+                    onThemeToggle={handleThemeToggle}
+                    onCreateWidget={() => undefined}
+                    onLogout={() => setAuthorized(false)}
+                    onDeleteWidget={(title) =>
+                      setVisibleWidgets((currentWidgets) =>
+                        currentWidgets.filter((currentWidget) => currentWidget.title !== title),
+                      )
+                    }
+                  />
+                </>
+              ) : route === 'auth' ? (
+                <AuthPage authTab={authTab} locale={locale} onAuthTabChange={setAuthTab} />
+              ) : (
+                <LandingPage locale={locale} onAuthNavigate={navigateToAuth} />
+              )}
+            </main>
+          </motion.div>
+        </AnimatePresence>
+        <ThemeReveal reveal={themeReveal} onComplete={() => setThemeReveal(null)} />
       </div>
     </ThemeProvider>
   );

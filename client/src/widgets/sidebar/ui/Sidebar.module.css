@@ -40,6 +40,31 @@
   transition: opacity 0.2s;
 }
 
+.textSkeleton {
+  display: inline-block;
+  width: 7rem;
+  height: 0.9em;
+  border-radius: 999px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--muted) 16%, transparent) 20%,
+    color-mix(in srgb, var(--action) 30%, transparent) 45%,
+    color-mix(in srgb, var(--muted) 16%, transparent) 70%
+  );
+  background-size: 220% 100%;
+  animation: sidebar-skeleton-shimmer 1s linear infinite;
+}
+
+@keyframes sidebar-skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}
+
 .sidebar:not(.expanded) .username {
   width: 0;
   opacity: 0;
@@ -75,35 +100,6 @@
 .sidebar:not(.expanded) .recentTitle,
 .sidebar:not(.expanded) .recentLabel {
   opacity: 0;
-}
-
-.recentItem {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-height: var(--sidebar-width);
-  gap: 0.75rem;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0.75rem;
-  padding: 0 0.5rem;
-  color: var(--text);
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-}
-
-.recentItem:hover {
-  background: color-mix(in srgb, var(--action) 12%, transparent);
-}
-
-.recentIcon {
-  display: block;
-  flex: 0 0 0.5rem;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--action);
 }
 
 .recentLabel {
@@ -151,9 +147,16 @@
 .toggle {
   margin-left: auto;
   transform: rotate(180deg);
-  transition: all 0.2s;
+  transition: transform 0.2s;
 }
 
 .toggleExpanded {
   transform: rotate(0deg);
+}
+
+@media (max-width: 560px) {
+  .sidebar {
+    padding: 0.5rem;
+    border-radius: 24px;
+  }
 }

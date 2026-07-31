@@ -1,5 +1,8 @@
+import type { Locale } from '../../shared/locale/content';
+
 export type AppTheme = 'light' | 'dark';
-export type Locale = 'ru' | 'en';
+
+export type { Locale };
 
 export const APP_THEME_STORAGE_KEY = 'app-theme';
 export const APP_LOCALE_STORAGE_KEY = 'app-locale';
