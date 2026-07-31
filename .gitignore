@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
 .vscode/*
@@ -26,3 +29,7 @@ dist-ssr
 #Typescript build info
 *.tsbuildinfo
 tsconfig.tsbuildinfo
+
+# Project prompts (local only, not for git)
+prompts/
+.opencode/
