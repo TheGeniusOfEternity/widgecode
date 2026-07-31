@@ -105,10 +105,15 @@ export const App = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (isBootstrapped && route === 'dashboard' && authStatus === 'unauthenticated') {
+    if (
+      isBootstrapped &&
+      !isLoggingOut &&
+      route === 'dashboard' &&
+      authStatus === 'unauthenticated'
+    ) {
       window.location.replace('/login');
     }
-  }, [authStatus, isBootstrapped, route]);
+  }, [authStatus, isBootstrapped, isLoggingOut, route]);
 
   const handleLocaleToggle = () => {
     if (isLocaleTransitioning) return;
