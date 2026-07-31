@@ -1,1 +1,1 @@
-export { Sidebar, type SidebarLabels } from './ui/Sidebar';
+export { Sidebar, type SidebarLabels } from '@/widgets/sidebar/ui/Sidebar';

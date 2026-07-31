@@ -1,4 +1,4 @@
-import styles from './AuthTransitionLoader.module.css';
+import styles from '@/shared/ui/auth-transition-loader/AuthTransitionLoader.module.css';
 
 type AuthTransitionLoaderProps = {
   locale: 'ru' | 'en';

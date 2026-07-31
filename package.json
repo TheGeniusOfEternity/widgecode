@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
+    "typecheck": "npm run typecheck -w client && npm run typecheck -w server && npm run typecheck:api",
+    "typecheck:api": "tsc -p tsconfig.api.json --pretty false",
     "test": "npm run test -w client && npm run test -w server",
     "prepare": "husky"
   },

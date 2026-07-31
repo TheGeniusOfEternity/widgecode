@@ -1,11 +1,11 @@
 import type { MouseEvent } from 'react';
 
-import type { AppTheme } from '../../../app/config';
-import { WidgetCard, type WidgetCardData, type WidgetCardLabels } from '../../../entities/widget';
-import { messages, type Locale } from '../../../shared/locale/content';
-import { Sidebar, type SidebarLabels } from '../../../widgets/sidebar';
-import { WidgetsGalleryHeader } from './WidgetsGalleryHeader';
-import styles from './WidgetsGalleryPage.module.css';
+import type { AppTheme } from '@/app/config';
+import { WidgetCard, type WidgetCardData, type WidgetCardLabels } from '@/entities/widget';
+import { messages, type Locale } from '@/shared/locale/content';
+import { Sidebar, type SidebarLabels } from '@/widgets/sidebar';
+import { WidgetsGalleryHeader } from '@/pages/widgets-gallery/ui/WidgetsGalleryHeader';
+import styles from '@/pages/widgets-gallery/ui/WidgetsGalleryPage.module.css';
 
 type WidgetsGalleryPageProps = {
   locale: Locale;

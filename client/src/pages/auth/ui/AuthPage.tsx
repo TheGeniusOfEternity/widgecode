@@ -1,9 +1,9 @@
 import { Button, Card, Tab, TabList, TextInput } from '@gravity-ui/uikit';
 import { useState, type FormEvent } from 'react';
 
-import { messages, type Locale } from '../../../shared/locale/content';
-import glassStyles from '../../../shared/ui/glass/Glass.module.css';
-import styles from './AuthPage.module.css';
+import { messages, type Locale } from '@/shared/locale/content';
+import glassStyles from '@/shared/ui/glass/Glass.module.css';
+import styles from '@/pages/auth/ui/AuthPage.module.css';
 
 export type AuthTab = 'signin' | 'signup';
 

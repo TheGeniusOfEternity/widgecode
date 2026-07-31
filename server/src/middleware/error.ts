@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler } from 'express';
 
-import { AppError } from '../lib/errors.js';
+import { AppError } from '@server/lib/errors.js';
 
 export const errorMiddleware: ErrorRequestHandler = (error, _req, res, _next) => {
   console.error(error);

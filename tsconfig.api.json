@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["client/src/*"],
+      "@server/*": ["server/src/*"]
+    },
+    "types": ["node"]
+  },
+  "include": ["api/**/*.ts", "server/src/**/*.ts"],
+  "exclude": ["server/src/**/*.test.ts"]
+}

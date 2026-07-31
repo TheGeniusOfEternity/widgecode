@@ -2,7 +2,7 @@ import { Gear, ArrowRight, TrashBin, Copy } from '@gravity-ui/icons';
 import { Button, Card, Icon, Modal } from '@gravity-ui/uikit';
 import { useState } from 'react';
 
-import styles from './WidgetCard.module.css';
+import styles from '@/entities/widget/ui/WidgetCard.module.css';
 
 export type WidgetCardData = {
   title: string;

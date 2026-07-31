@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-import styles from './ThemeReveal.module.css';
+import styles from '@/shared/ui/theme-reveal/ThemeReveal.module.css';
 
 export type ThemeRevealState = {
   left: number;

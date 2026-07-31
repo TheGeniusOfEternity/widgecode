@@ -9,8 +9,8 @@ import {
 } from '@gravity-ui/icons';
 import { useState, type MouseEvent } from 'react';
 
-import type { AppTheme, Locale } from '../../../app/config';
-import styles from './Sidebar.module.css';
+import type { AppTheme, Locale } from '@/app/config';
+import styles from '@/widgets/sidebar/ui/Sidebar.module.css';
 import { Button, Icon } from '@gravity-ui/uikit';
 
 export type SidebarLabels = {

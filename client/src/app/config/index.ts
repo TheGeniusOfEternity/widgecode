@@ -5,4 +5,4 @@ export {
   getSystemTheme,
   type AppTheme,
   type Locale,
-} from './theme';
+} from '@/app/config/theme';

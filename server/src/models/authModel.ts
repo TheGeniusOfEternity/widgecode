@@ -1,6 +1,6 @@
 import type { AuthSession, User } from '@prisma/client';
 
-import { prisma } from '../lib/prisma.js';
+import { prisma } from '@server/lib/prisma.js';
 
 export type PublicUser = Pick<User, 'id' | 'email' | 'name'>;
 export type AuthSessionWithUser = AuthSession & { user: User };

@@ -1,1 +1,5 @@
-export { WidgetCard, type WidgetCardData, type WidgetCardLabels } from './ui/WidgetCard';
+export {
+  WidgetCard,
+  type WidgetCardData,
+  type WidgetCardLabels,
+} from '@/entities/widget/ui/WidgetCard';

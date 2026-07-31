@@ -1,7 +1,7 @@
 import { LogoGithub, Plus } from '@gravity-ui/icons';
 import { Button, Icon } from '@gravity-ui/uikit';
 
-import styles from './WidgetsGalleryHeader.module.css';
+import styles from '@/pages/widgets-gallery/ui/WidgetsGalleryHeader.module.css';
 
 type WidgetsGalleryHeaderProps = {
   eyebrow: string;

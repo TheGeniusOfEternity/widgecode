@@ -1,4 +1,11 @@
 {
   "files": [],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["client/src/*"],
+      "@server/*": ["server/src/*"]
+    }
+  },
   "references": [{ "path": "./client" }, { "path": "./server" }]
 }

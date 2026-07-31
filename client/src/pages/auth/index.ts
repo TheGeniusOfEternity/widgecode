@@ -1,1 +1,1 @@
-export { AuthPage, type AuthTab } from './ui/AuthPage';
+export { AuthPage, type AuthTab } from '@/pages/auth/ui/AuthPage';

@@ -1,9 +1,9 @@
 import { Button } from '@gravity-ui/uikit';
 import type { MouseEvent } from 'react';
 
-import { messages, type Locale } from '../../../shared/locale/content';
-import glassStyles from '../../../shared/ui/glass/Glass.module.css';
-import styles from './LandingPage.module.css';
+import { messages, type Locale } from '@/shared/locale/content';
+import glassStyles from '@/shared/ui/glass/Glass.module.css';
+import styles from '@/pages/landing/ui/LandingPage.module.css';
 
 type LandingPageProps = {
   locale: Locale;

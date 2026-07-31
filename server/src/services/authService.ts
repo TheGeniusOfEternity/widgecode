@@ -3,14 +3,14 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-import { AppError } from '../lib/errors.js';
+import { AppError } from '@server/lib/errors.js';
 import {
   generateAccessToken,
   generateRefreshToken,
   getRefreshTokenTtlMs,
   verifyRefreshToken,
-} from '../lib/jwt.js';
-import { authModel, type PublicUser } from '../models/authModel.js';
+} from '@server/lib/jwt.js';
+import { authModel, type PublicUser } from '@server/models/authModel.js';
 
 export const REFRESH_COOKIE_NAME = 'github_stats_refresh';
 export const OAUTH_STATE_COOKIE_NAME = 'github_stats_oauth_state';

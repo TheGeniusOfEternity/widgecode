@@ -1,4 +1,4 @@
-import type { Locale } from '../../shared/locale/content';
+import type { Locale } from '@/shared/locale/content';
 
 export type AppTheme = 'light' | 'dark';
 

@@ -1,6 +1,6 @@
 import request from 'supertest';
 
-import { createApp } from './app.js';
+import { createApp } from '@server/app.js';
 
 const prismaMocks = vi.hoisted(() => ({
   user: {
@@ -14,7 +14,7 @@ const prismaMocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('./lib/prisma.js', () => ({ prisma: prismaMocks }));
+vi.mock('@server/lib/prisma.js', () => ({ prisma: prismaMocks }));
 
 const app = createApp();
 const user = { id: 'user-1', email: 'person@example.com', name: 'Person' };

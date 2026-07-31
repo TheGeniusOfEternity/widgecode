@@ -2,14 +2,14 @@ import { ThemeProvider } from '@gravity-ui/uikit';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 
-import { useAuthStore } from '../features/auth';
-import type { WidgetCardData } from '../entities/widget';
-import { AuthPage, type AuthTab } from '../pages/auth';
-import { LandingHeader, LandingPage } from '../pages/landing';
-import { WidgetsGalleryPage } from '../pages/widgets-gallery';
-import { API_BASE_URL } from '../shared/api';
-import { widgets } from '../shared/locale/content';
-import { AuthTransitionLoader } from '../shared/ui/auth-transition-loader/AuthTransitionLoader';
+import { useAuthStore } from '@/features/auth';
+import type { WidgetCardData } from '@/entities/widget';
+import { AuthPage, type AuthTab } from '@/pages/auth';
+import { LandingHeader, LandingPage } from '@/pages/landing';
+import { WidgetsGalleryPage } from '@/pages/widgets-gallery';
+import { API_BASE_URL } from '@/shared/api';
+import { widgets } from '@/shared/locale/content';
+import { AuthTransitionLoader } from '@/shared/ui/auth-transition-loader/AuthTransitionLoader';
 import {
   APP_LOCALE_STORAGE_KEY,
   APP_THEME_STORAGE_KEY,
@@ -17,10 +17,10 @@ import {
   getSystemTheme,
   type AppTheme,
   type Locale,
-} from './config';
-import { ThemeReveal, type ThemeRevealState } from '../shared/ui/theme-reveal';
-import styles from './App.module.css';
-import './Theme.css';
+} from '@/app/config';
+import { ThemeReveal, type ThemeRevealState } from '@/shared/ui/theme-reveal';
+import styles from '@/app/App.module.css';
+import '@/app/Theme.css';
 
 type AppRoute = 'landing' | 'auth' | 'dashboard' | 'callback';
 

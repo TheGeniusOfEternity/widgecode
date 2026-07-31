@@ -2,10 +2,10 @@ import { Moon, Sun } from '@gravity-ui/icons';
 import { Button, Icon } from '@gravity-ui/uikit';
 import type { MouseEvent } from 'react';
 
-import type { AppTheme } from '../../../app/config';
-import { messages, type Locale } from '../../../shared/locale/content';
-import glassStyles from '../../../shared/ui/glass/Glass.module.css';
-import styles from './LandingHeader.module.css';
+import type { AppTheme } from '@/app/config';
+import { messages, type Locale } from '@/shared/locale/content';
+import glassStyles from '@/shared/ui/glass/Glass.module.css';
+import styles from '@/pages/landing/ui/LandingHeader.module.css';
 
 type LandingHeaderProps = {
   locale: Locale;

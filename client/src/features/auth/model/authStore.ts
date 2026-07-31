@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { apiClient, configureApiAuth, getApiErrorMessage } from '../../../shared/api';
+import { apiClient, configureApiAuth, getApiErrorMessage } from '@/shared/api';
 
 export type AuthUser = {
   id: string;

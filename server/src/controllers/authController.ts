@@ -3,14 +3,14 @@ import { timingSafeEqual } from 'node:crypto';
 import { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 
-import { AppError } from '../lib/errors.js';
-import { type AuthRequest } from '../middleware/auth.js';
+import { AppError } from '@server/lib/errors.js';
+import { type AuthRequest } from '@server/middleware/auth.js';
 import {
   authService,
   OAUTH_STATE_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
   type AuthResult,
-} from '../services/authService.js';
+} from '@server/services/authService.js';
 
 const credentialsSchema = z.object({
   email: z.string().trim().toLowerCase().email('Enter a valid email'),
