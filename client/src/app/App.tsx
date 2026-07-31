@@ -191,7 +191,10 @@ export const App = () => {
   }, [locale]);
 
   const isAuthorized = authStatus === 'authenticated';
-  const isAuthTransitioning = !isBootstrapped || isLoggingOut || route === 'callback';
+  const isRedirectingFromPrivateRoute =
+    isBootstrapped && route === 'dashboard' && authStatus === 'unauthenticated';
+  const isAuthTransitioning =
+    !isBootstrapped || isLoggingOut || route === 'callback' || isRedirectingFromPrivateRoute;
   const oauthError =
     route === 'auth' && new URLSearchParams(window.location.search).has('oauth_error')
       ? locale === 'ru'
@@ -256,11 +259,7 @@ export const App = () => {
                         )
                       }
                     />
-                  ) : (
-                    <div>
-                      {locale === 'ru' ? 'Проверяем авторизацию…' : 'Checking authentication…'}
-                    </div>
-                  )
+                  ) : null
                 ) : route === 'auth' ? (
                   <AuthPage
                     authTab={authTab}
