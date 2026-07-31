@@ -19,7 +19,7 @@ import {
 } from './config';
 import { ThemeReveal, type ThemeRevealState } from '../shared/ui/theme-reveal';
 import styles from './App.module.css';
-import './Theme.module.css';
+import './Theme.css';
 
 type AppRoute = 'landing' | 'auth' | 'dashboard' | 'callback';
 

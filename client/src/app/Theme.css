@@ -1,4 +1,4 @@
-:global(:root) {
+:root {
   color: #181722;
   background: #f5f2ec;
   font-family:
@@ -13,7 +13,7 @@
   text-rendering: optimizeLegibility;
 }
 
-:global(:root[data-theme='light']) {
+:root[data-theme='light'] {
   --page-bg: #f6f1eb;
   --text: #191724;
   --muted: #625d72;
@@ -30,7 +30,7 @@
   --mint: #8edfc6;
 }
 
-:global(:root[data-theme='dark']) {
+:root[data-theme='dark'] {
   --page-bg: #11101a;
   --text: #f7f2ff;
   --muted: #c4bad7;
@@ -47,17 +47,17 @@
   --mint: #74d6bd;
 }
 
-:global(*) {
+* {
   box-sizing: border-box;
 }
 
-:global(body) {
+body {
   margin: 0;
   color: var(--text);
   background: var(--page-bg);
 }
 
-:global(.g-root) {
+.g-root {
   --g-color-base-brand: var(--action);
   --g-color-base-brand-hover: var(--action-hover);
   --g-color-base-brand-active: var(--action-active);
@@ -80,13 +80,13 @@
   --g-tooltip-border-radius: 12px;
 }
 
-:global(.g-root .g-segmented-radio-group),
-:global(.g-root .g-segmented-radio-group__option),
-:global(.g-root .g-segmented-radio-group__option::before),
-:global(.g-root .g-segmented-radio-group__option_checked),
-:global(.g-root .g-segmented-radio-group__option_checked::before),
-:global(.g-root .g-segmented-radio-group__option_selected),
-:global(.g-root .g-segmented-radio-group__option_selected::before) {
+.g-root .g-segmented-radio-group,
+.g-root .g-segmented-radio-group__option,
+.g-root .g-segmented-radio-group__option::before,
+.g-root .g-segmented-radio-group__option_checked,
+.g-root .g-segmented-radio-group__option_checked::before,
+.g-root .g-segmented-radio-group__option_selected,
+.g-root .g-segmented-radio-group__option_selected::before {
   --g-color-base-brand: var(--action);
   --g-color-base-brand-hover: var(--action-hover);
   --g-color-base-brand-active: var(--action-active);
@@ -95,45 +95,45 @@
   --g-color-text-brand-heavy: var(--action-active);
 }
 
-:global(.g-root .g-segmented-radio-group__option_checked),
-:global(.g-root .g-segmented-radio-group__option_selected) {
+.g-root .g-segmented-radio-group__option_checked,
+.g-root .g-segmented-radio-group__option_selected {
   color: var(--action-active);
 }
 
-:global(.g-root .g-segmented-radio-group__option_checked::before),
-:global(.g-root .g-segmented-radio-group__option_selected::before) {
+.g-root .g-segmented-radio-group__option_checked::before,
+.g-root .g-segmented-radio-group__option_selected::before {
   background-color: color-mix(in srgb, var(--action) 22%, var(--glass-strong));
   border-color: color-mix(in srgb, var(--action) 46%, transparent);
 }
 
-:global(.g-root .g-segmented-radio-group__option_checked .g-segmented-radio-group__option-text),
-:global(.g-root .g-segmented-radio-group__option_selected .g-segmented-radio-group__option-text) {
+.g-root .g-segmented-radio-group__option_checked .g-segmented-radio-group__option-text,
+.g-root .g-segmented-radio-group__option_selected .g-segmented-radio-group__option-text {
   color: var(--action-active);
 }
 
-:global(button),
-:global(input) {
+button,
+input {
   font: inherit;
 }
 
-:global(button),
-:global(.g-button) {
+button,
+.g-button {
   font-family: Roboto, Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
-:global(.g-button_view_outlined),
-:global(.g-button_view_outlined-action) {
+.g-button_view_outlined,
+.g-button_view_outlined-action {
   --g-button-border-color: var(--line);
   --g-button-border-width: 1px;
   border-color: var(--line);
 }
 
-:global(.g-button_view_action) {
+.g-button_view_action {
   --g-button-text-color: #fff;
   --g-button-text-color-hover: #fff;
   --g-button-text-color-active: #fff;
 }
 
-:global(.g-button:active) {
+.g-button:active {
   transform: none;
 }
