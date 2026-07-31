@@ -205,6 +205,13 @@
   background: var(--line);
 }
 
+.authError {
+  margin: -8px 0 -4px;
+  color: var(--danger, #d93025);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .yandexMark {
   display: inline-grid;
   width: 28px;

@@ -1,0 +1,19 @@
+{
+  "buildCommand": "npm run prisma:generate -w server && npm run build -w client",
+  "outputDirectory": "client/dist",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/server/src/index.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "server/src/index.ts": {
+      "maxDuration": 30
+    }
+  }
+}

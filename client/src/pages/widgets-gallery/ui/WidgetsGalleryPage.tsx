@@ -10,6 +10,7 @@ import styles from './WidgetsGalleryPage.module.css';
 type WidgetsGalleryPageProps = {
   locale: Locale;
   theme: AppTheme;
+  username: string;
   widgets: WidgetCardData[];
   isLanguageLoading: boolean;
   onLocaleToggle: () => void;
@@ -22,6 +23,7 @@ type WidgetsGalleryPageProps = {
 export const WidgetsGalleryPage = ({
   locale,
   theme,
+  username,
   widgets,
   isLanguageLoading,
   onLocaleToggle,
@@ -52,7 +54,7 @@ export const WidgetsGalleryPage = ({
   return (
     <>
       <Sidebar
-        username={t.profile}
+        username={username}
         locale={locale}
         theme={theme}
         widgetNames={widgets.map((widget) => widget.title)}

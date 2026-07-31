@@ -1,9 +1,11 @@
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
 import { errorMiddleware } from './middleware/error.js';
+import { authRouter } from './routes/auth.js';
 import { healthRouter } from './routes/health.js';
 
 export const createApp = () => {
@@ -17,9 +19,11 @@ export const createApp = () => {
     }),
   );
   app.use(express.json());
+  app.use(cookieParser());
   app.use(morgan('dev'));
 
   app.use('/api/health', healthRouter);
+  app.use('/api/auth', authRouter);
 
   app.use(errorMiddleware);
 

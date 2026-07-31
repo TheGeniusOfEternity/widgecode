@@ -1,5 +1,5 @@
 import { Moon, Sun } from '@gravity-ui/icons';
-import { Button, Icon, Switch } from '@gravity-ui/uikit';
+import { Button, Icon } from '@gravity-ui/uikit';
 import type { MouseEvent } from 'react';
 
 import type { AppTheme } from '../../../app/config';
@@ -12,9 +12,10 @@ type LandingHeaderProps = {
   theme: AppTheme;
   isAuthorized: boolean;
   onAuthNavigate: () => void;
+  onDashboardNavigate: () => void;
+  onLogout: () => void;
   onLocaleToggle: () => void;
   onThemeToggle: (event: MouseEvent<HTMLButtonElement>) => void;
-  onAuthorizationToggle: (checked: boolean) => void;
 };
 
 export const LandingHeader = ({
@@ -22,24 +23,26 @@ export const LandingHeader = ({
   theme,
   isAuthorized,
   onAuthNavigate,
+  onDashboardNavigate,
+  onLogout,
   onLocaleToggle,
   onThemeToggle,
-  onAuthorizationToggle,
 }: LandingHeaderProps) => {
   const t = messages[locale];
 
   return (
     <header className={`${glassStyles.glass} ${styles.headerPanel}`}>
       <Button
-        href="/auth"
+        href={isAuthorized ? '/dashboard' : '/register'}
         view="outlined"
         size="xl"
-        onClick={(event) => {
+        onClick={(event: MouseEvent<HTMLElement>) => {
           event.preventDefault();
-          onAuthNavigate();
+          if (isAuthorized) onDashboardNavigate();
+          else onAuthNavigate();
         }}
       >
-        {t.authCta}
+        {isAuthorized ? t.dashboard : t.authCta}
       </Button>
       <div className={styles.headerControls}>
         <Button size="xl" type="button" view="outlined" onClick={onLocaleToggle}>
@@ -55,7 +58,11 @@ export const LandingHeader = ({
           <Icon data={theme === 'dark' ? Moon : Sun} size={20} />
           {theme}
         </Button>
-        <Switch checked={isAuthorized} onUpdate={onAuthorizationToggle} content={t.demoAuth} />
+        {isAuthorized && (
+          <Button size="xl" type="button" view="outlined" onClick={onLogout}>
+            {t.logout}
+          </Button>
+        )}
       </div>
     </header>
   );

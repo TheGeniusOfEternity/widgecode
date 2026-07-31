@@ -1,4 +1,5 @@
 import { Button } from '@gravity-ui/uikit';
+import type { MouseEvent } from 'react';
 
 import { messages, type Locale } from '../../../shared/locale/content';
 import glassStyles from '../../../shared/ui/glass/Glass.module.css';
@@ -6,10 +7,11 @@ import styles from './LandingPage.module.css';
 
 type LandingPageProps = {
   locale: Locale;
+  isAuthorized: boolean;
   onAuthNavigate: () => void;
 };
 
-export const LandingPage = ({ locale, onAuthNavigate }: LandingPageProps) => {
+export const LandingPage = ({ locale, isAuthorized, onAuthNavigate }: LandingPageProps) => {
   const t = messages[locale];
 
   return (
@@ -24,15 +26,15 @@ export const LandingPage = ({ locale, onAuthNavigate }: LandingPageProps) => {
           <span className={styles.glassPill}>Lavender theme</span>
         </div>
         <Button
-          href="/auth"
+          href={isAuthorized ? '/dashboard' : '/register'}
           view="action"
           size="xl"
-          onClick={(event) => {
+          onClick={(event: MouseEvent<HTMLElement>) => {
             event.preventDefault();
             onAuthNavigate();
           }}
         >
-          {t.authCta}
+          {isAuthorized ? t.dashboard : t.authCta}
         </Button>
       </div>
     </section>
