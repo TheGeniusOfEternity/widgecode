@@ -38,6 +38,7 @@ model Widget {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
+  slug      String   @unique
   width     Int      @default(600)
   height    Int      @default(400)
   public    Boolean  @default(false)

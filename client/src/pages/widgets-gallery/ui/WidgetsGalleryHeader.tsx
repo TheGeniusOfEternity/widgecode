@@ -9,6 +9,7 @@ type WidgetsGalleryHeaderProps = {
   createWidget: string;
   starOnGithub: string;
   isLanguageLoading: boolean;
+  onCreateWidget: () => void;
 };
 
 const repositoryUrl = 'https://github.com/TheGeniusOfEternity/github-stats';
@@ -19,6 +20,7 @@ export const WidgetsGalleryHeader = ({
   createWidget,
   starOnGithub,
   isLanguageLoading,
+  onCreateWidget,
 }: WidgetsGalleryHeaderProps) => (
   <header className={styles.header}>
     <div className={styles.copy}>
@@ -36,7 +38,7 @@ export const WidgetsGalleryHeader = ({
           {isLanguageLoading ? '' : starOnGithub}
         </span>
       </Button>
-      <Button view="action" size="l">
+      <Button view="action" size="l" onClick={onCreateWidget}>
         <Icon data={Plus} size={18} />
         <span className={`${styles.buttonLabel} ${isLanguageLoading ? styles.textSkeleton : ''}`}>
           {isLanguageLoading ? '' : createWidget}

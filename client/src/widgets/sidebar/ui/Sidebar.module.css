@@ -1,5 +1,6 @@
 :root {
   --sidebar-width: 3rem;
+  --sidebar-width-expanded: 15rem;
 
   --g-button-height: var(--sidebar-width);
 }
@@ -112,7 +113,7 @@
 }
 
 .expanded {
-  min-width: 15rem;
+  min-width: var(--sidebar-width-expanded);
 }
 
 .controls {

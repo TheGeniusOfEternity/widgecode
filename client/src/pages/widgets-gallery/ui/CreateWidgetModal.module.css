@@ -1,0 +1,125 @@
+.modalContent {
+  display: grid;
+  gap: 24px;
+  width: min(680px, calc(100vw - 34px));
+  padding: 30px;
+}
+
+.modalHeading {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 24px;
+  align-items: end;
+}
+
+.modalHeading h2,
+.modalHeading p,
+.modalHeading .eyebrow {
+  margin: 0;
+}
+
+.modalHeading h2 {
+  font-size: clamp(25px, 5vw, 36px);
+  letter-spacing: -0.06em;
+}
+
+.modalHeading > p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.eyebrow {
+  margin-bottom: 8px !important;
+  color: var(--action);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.form {
+  display: grid;
+  gap: 18px;
+}
+
+.form label,
+.presets {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form label > span:first-child,
+.presets legend {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.preset {
+  display: grid;
+  gap: 6px;
+  min-height: 86px;
+  padding: 14px;
+  color: var(--text);
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--glass-strong) 80%, transparent);
+  cursor: pointer;
+}
+
+.preset span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.presetSelected {
+  border-color: var(--action);
+  background: color-mix(in srgb, var(--action) 12%, var(--glass-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 12%, transparent);
+}
+
+.selectionNote,
+.error {
+  margin: 0;
+  font-size: 13px;
+}
+
+.selectionNote {
+  color: var(--muted);
+}
+.error {
+  color: #c34f62;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 620px) {
+  .modalContent {
+    padding: 22px;
+  }
+  .modalHeading {
+    grid-template-columns: 1fr;
+  }
+  .presetGrid {
+    grid-template-columns: 1fr;
+  }
+}

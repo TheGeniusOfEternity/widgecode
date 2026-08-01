@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import { errorMiddleware } from '@server/middleware/error.js';
 import { authRouter } from '@server/routes/auth.js';
 import { healthRouter } from '@server/routes/health.js';
+import { blocksRouter, publicWidgetsRouter, widgetsRouter } from '@server/routes/widgets.js';
 
 export const createApp = () => {
   const app = express();
@@ -24,6 +25,9 @@ export const createApp = () => {
 
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
+  app.use('/api/widgets', widgetsRouter);
+  app.use('/api/blocks', blocksRouter);
+  app.use('/api/public/widgets', publicWidgetsRouter);
 
   app.use(errorMiddleware);
 

@@ -26,10 +26,11 @@ type SidebarProps = {
   locale: Locale;
   theme: AppTheme;
   labels: SidebarLabels;
-  widgetNames: readonly string[];
+  widgetNames: readonly { id: string; title: string }[];
   onLocaleToggle: () => void;
   onThemeToggle: (event: MouseEvent<HTMLButtonElement>) => void;
   onCreateWidget: () => void;
+  onOpenWidget: (id: string) => void;
   onLogout: () => void;
   isLanguageLoading: boolean;
 };
@@ -43,6 +44,7 @@ export const Sidebar = ({
   onLocaleToggle,
   onThemeToggle,
   onCreateWidget,
+  onOpenWidget,
   onLogout,
   isLanguageLoading,
 }: SidebarProps) => {
@@ -72,23 +74,23 @@ export const Sidebar = ({
           <span className={`${styles.recentTitle} ${isLanguageLoading ? styles.textSkeleton : ''}`}>
             {isLanguageLoading ? '' : labels.recentWidgets}
           </span>
-          {widgetNames.map((widgetName) => (
-            <div className={styles.btnWrapper} key={widgetName}>
+          {widgetNames.map((widget) => (
+            <div className={styles.btnWrapper} key={widget.id}>
               <Button
-                onClick={onCreateWidget}
+                onClick={() => onOpenWidget(widget.id)}
                 size="xl"
                 view="outlined"
                 className={[styles.button, !isExpanded ? styles.hidden : ''].join(' ')}
               >
                 <span className={isLanguageLoading ? styles.textSkeleton : ''}>
-                  {isLanguageLoading ? '' : widgetName}
+                  {isLanguageLoading ? '' : widget.title}
                 </span>
               </Button>
               <Button
                 size="xl"
                 view="flat"
                 className={styles.btnIcon}
-                onClick={onCreateWidget}
+                onClick={() => onOpenWidget(widget.id)}
                 aria-label={labels.createWidget}
               >
                 <Icon data={PencilToLine} size={20} />

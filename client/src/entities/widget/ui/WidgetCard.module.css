@@ -12,6 +12,8 @@
 }
 
 .preview {
+  --accent-color: var(--lavender);
+  --accent-soft: var(--lavender-soft);
   display: grid;
   min-height: clamp(110px, 18vh, 160px);
   place-items: center;
@@ -26,6 +28,15 @@
   font-size: 34px;
   font-weight: 850;
   letter-spacing: -0.04em;
+}
+
+.preview small {
+  align-self: end;
+  color: color-mix(in srgb, var(--accent-color) 72%, var(--text));
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .info {
@@ -100,7 +111,7 @@
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   min-width: 0;
   flex-wrap: wrap;
   justify-self: center;
@@ -134,20 +145,4 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 8px;
-}
-
-.accentLavender {
-  --accent-color: var(--lavender);
-}
-
-.accentMint {
-  --accent-color: var(--mint);
-}
-
-.accentBlue {
-  --accent-color: var(--blue);
-}
-
-.accentViolet {
-  --accent-color: #8f7cf6;
 }
