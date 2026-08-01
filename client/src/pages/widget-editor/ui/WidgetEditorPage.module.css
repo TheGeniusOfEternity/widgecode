@@ -179,11 +179,12 @@
 
 .canvasArea {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-content: start;
   gap: 10px;
   padding: 14px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .canvasMeta {
   justify-content: space-between;
@@ -210,11 +211,14 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  gap: 18px;
+  align-self: start;
+  width: 100%;
+  height: auto;
   min-height: 0;
   padding: 28px;
   color: var(--widget-ink);
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid color-mix(in srgb, var(--widget-accent) 25%, transparent);
   border-radius: 28px;
   background:
@@ -254,7 +258,7 @@
   z-index: 0;
   inset: 28px;
   display: grid;
-  gap: 13px;
+  gap: 18px;
   pointer-events: none;
 }
 
@@ -286,35 +290,83 @@
 }
 
 .gridLayoutHost {
-  display: flex;
-  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  min-height: 224px;
-  overflow: auto;
+  overflow: visible;
 }
 .editorBlocks {
-  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: var(--grid-cell-size, minmax(110px, auto));
+  align-items: stretch;
+  gap: 18px;
   width: 100%;
   position: relative;
   z-index: 2;
-  min-height: 224px;
   pointer-events: auto;
 }
 .sortableBlock {
   position: relative;
   min-width: 0;
-  min-height: 94px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  z-index: 2;
   cursor: pointer;
 }
-.editorBlocks > .react-grid-item {
-  pointer-events: auto;
-}
-.editorBlocks .react-grid-placeholder {
-  z-index: 1;
-  border: 1px dashed var(--widget-accent);
+.dropCell {
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
+  border: 1px dashed color-mix(in srgb, var(--widget-accent) 25%, transparent);
   border-radius: 20px;
-  background: color-mix(in srgb, var(--widget-accent) 15%, transparent);
+  background: color-mix(in srgb, var(--widget-accent) 5%, transparent);
+  cursor: copy;
+  pointer-events: none;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+  z-index: 3;
+}
+.dropCellActive {
+  border-color: var(--widget-accent);
+  background: color-mix(in srgb, var(--widget-accent) 18%, transparent);
+}
+.sizeControls {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 4;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--widget-surface) 88%, transparent);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.sizeButton,
+.sizeButtonActive {
+  padding: 3px 5px;
+  color: var(--muted);
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 9px;
+  line-height: 1;
+}
+.sizeButtonActive {
+  color: var(--widget-ink);
+  background: color-mix(in srgb, var(--widget-accent) 20%, transparent);
+}
+.sortableBlock:hover .sizeControls,
+.sortableBlock:focus-within .sizeControls {
+  opacity: 1;
+}
+.draggingBlock {
+  opacity: 0.45;
 }
 .canvasFooter {
   flex: 0 0 auto;
@@ -615,7 +667,7 @@
   }
 
   .gridSurface {
-    height: 560px;
+    min-height: 560px;
     padding: 18px;
   }
 }

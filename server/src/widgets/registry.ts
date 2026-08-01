@@ -35,7 +35,7 @@ export type BlockLayout = z.infer<typeof blockLayoutSchema>;
 const usernameSchema = z.string().trim().max(100).optional();
 
 const sharedBlockFields = {
-  layout: blockLayoutSchema.default({ x: 0, y: 0, width: 2, height: 1 }),
+  layout: blockLayoutSchema.default({ x: 0, y: 0, width: 1, height: 1 }),
 };
 
 const blockSchemas: Record<BlockType, z.ZodType> = {

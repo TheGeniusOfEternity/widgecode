@@ -202,7 +202,7 @@ export class WidgetService {
                     ? { username }
                     : {}),
                 },
-                { x: 0, y: position, width: MAX_GRID_COLUMNS, height: 1 },
+                { x: 0, y: position, width: 1, height: 1 },
               ),
             ),
           })),
@@ -262,7 +262,7 @@ export class WidgetService {
     const normalizedConfig = normalizeBlockConfig(input.type, input.config, {
       x: 0,
       y: lastRow,
-      width: MAX_GRID_COLUMNS,
+      width: 1,
       height: 1,
     });
     return prisma.block.create({

@@ -79,6 +79,50 @@ it('creates a widget with preset blocks and a generated slug', async () => {
       data: expect.objectContaining({ title: 'GitHub overview', userId: user.id }),
     }),
   );
+  const createCall = prismaMocks.widget.create.mock.calls[0]?.[0] as {
+    data: { blocks: { create: { config: { layout: { width: number; height: number } } }[] } };
+  };
+  expect(createCall.data.blocks.create).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 1, height: 1 } }),
+      }),
+      expect.objectContaining({
+        config: expect.objectContaining({ layout: { x: 0, y: 1, width: 1, height: 1 } }),
+      }),
+    ]),
+  );
+});
+
+it('creates a new block as a single-column item', async () => {
+  const { agent, token } = await authenticatedAgent();
+  prismaMocks.widget.findFirst.mockResolvedValue({
+    id: widget.id,
+    userId: user.id,
+    config: { grid: { columns: 2 }, palette: 'lavender', renderFormat: 'iframe' },
+    blocks: [],
+  });
+  prismaMocks.block.create.mockResolvedValue({
+    id: 'block-1',
+    widgetId: widget.id,
+    position: 0,
+    type: 'text',
+    config: { text: 'New block', layout: { x: 0, y: 0, width: 1, height: 1 } },
+  });
+
+  await agent
+    .post(`/api/widgets/${widget.id}/blocks`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ type: 'text', config: { text: 'New block' } })
+    .expect(201);
+
+  expect(prismaMocks.block.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 1, height: 1 } }),
+      }),
+    }),
+  );
 });
 
 it('does not expose another user widget through protected routes', async () => {

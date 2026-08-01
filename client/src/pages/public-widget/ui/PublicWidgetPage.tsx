@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useReducedMotion } from 'framer-motion';
 
 import { WidgetCanvas, type PublicWidgetResponse } from '@/entities/widget';
 import { getPublicWidget } from '@/shared/api';
 import type { Locale } from '@/shared/locale/content';
 import { messages } from '@/shared/locale/content';
+import { AuthTransitionLoader } from '@/shared/ui/auth-transition-loader/AuthTransitionLoader';
 import styles from '@/pages/public-widget/ui/PublicWidgetPage.module.css';
 
 type PublicWidgetPageProps = {
@@ -13,6 +15,7 @@ type PublicWidgetPageProps = {
 
 export const PublicWidgetPage = ({ slug, locale }: PublicWidgetPageProps) => {
   const t = messages[locale];
+  const prefersReducedMotion = useReducedMotion();
   const [payload, setPayload] = useState<PublicWidgetResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +39,12 @@ export const PublicWidgetPage = ({ slug, locale }: PublicWidgetPageProps) => {
         {error}
       </main>
     );
-  if (!payload) return <main className={styles.status}>{t.loading}</main>;
+  if (!payload)
+    return (
+      <main className={styles.status}>
+        <AuthTransitionLoader locale={locale} reducedMotion={Boolean(prefersReducedMotion)} />
+      </main>
+    );
 
   const widget = {
     ...payload.widget,

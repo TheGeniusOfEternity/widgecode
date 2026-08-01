@@ -54,12 +54,12 @@ const renderedData = (block: WidgetBlock, renderedBlocks?: RenderedBlock[]) =>
 
 const getBlockLayout = (block: WidgetBlock): BlockLayout => {
   const value = block.config.layout;
-  if (!value || typeof value !== 'object') return { x: 0, y: 0, width: 2, height: 1 };
+  if (!value || typeof value !== 'object') return { x: 0, y: 0, width: 1, height: 1 };
   const layout = value as Partial<BlockLayout>;
   return {
     x: typeof layout.x === 'number' ? layout.x : 0,
     y: typeof layout.y === 'number' ? layout.y : 0,
-    width: typeof layout.width === 'number' ? layout.width : 2,
+    width: typeof layout.width === 'number' ? layout.width : 1,
     height: typeof layout.height === 'number' ? layout.height : 1,
   };
 };

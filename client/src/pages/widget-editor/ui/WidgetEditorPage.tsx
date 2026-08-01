@@ -1,11 +1,13 @@
 import { ArrowLeft, Check, Copy, Eye, Grip, Plus, TrashBin } from '@gravity-ui/icons';
 import { Button, Checkbox, Icon, Select, TextArea, TextInput } from '@gravity-ui/uikit';
-import GridLayout, { type Layout, type LayoutItem, WidthProvider } from 'react-grid-layout/legacy';
-import type { EventCallback } from 'react-grid-layout';
-import { flushSync } from 'react-dom';
-import { useEffect, useEffectEvent, useRef, useState, type CSSProperties, type Ref } from 'react';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+} from 'react';
 
 import { WidgetBlockContent } from '@/entities/widget';
 import {
@@ -34,9 +36,15 @@ import canvasStyles from '@/entities/widget/ui/WidgetCanvas.module.css';
 
 const MAX_BLOCKS = 5;
 const MAX_COLUMNS = 2;
-const GRID_ROW_HEIGHT = 112;
-const DEFAULT_LAYOUT: BlockLayout = { x: 0, y: 0, width: 2, height: 1 };
-const EditorGridLayout = WidthProvider(GridLayout);
+const GRID_GAP = 18;
+const DEFAULT_LAYOUT: BlockLayout = { x: 0, y: 0, width: 1, height: 1 };
+
+const blockSizes = [
+  { width: 1, height: 1, label: '1 × 1' },
+  { width: 1, height: 2, label: '1 × 2' },
+  { width: 2, height: 1, label: '2 × 1' },
+  { width: 2, height: 2, label: '2 × 2' },
+] as const;
 
 type WidgetEditorPageProps = {
   widgetId: string;
@@ -48,7 +56,7 @@ type WidgetEditorPageProps = {
 type CachedEditorState = { savedAt: number; widget: Widget };
 type Panel = 'widget' | 'block';
 
-const cacheKey = (widgetId: string) => `widget-editor:v2:${widgetId}`;
+const cacheKey = (widgetId: string) => `widget-editor:v4:${widgetId}`;
 
 const readCachedWidget = (widgetId: string): Widget | null => {
   try {
@@ -91,9 +99,9 @@ const layoutFromBlock = (block: WidgetBlock, index: number, columns: number): Bl
 };
 
 const normalizeWidget = (widget: Widget) => {
-  const columns = clamp(widget.config?.grid?.columns ?? 1, 1, MAX_COLUMNS);
+  const columns = MAX_COLUMNS;
   const legacySources = widget.config?.sources ?? {};
-  let changed = !widget.config?.grid || !widget.config?.paletteMode;
+  let changed = widget.config?.grid?.columns !== MAX_COLUMNS || !widget.config?.paletteMode;
   const blocks = [...widget.blocks]
     .sort((left, right) => left.position - right.position)
     .map((block, index) => {
@@ -139,78 +147,50 @@ const getLayout = (block: WidgetBlock): BlockLayout => {
 const layoutsFor = (widget: Widget) =>
   widget.blocks.map((block) => ({ blockId: block.id, layout: getLayout(block) }));
 
-const columnsForLayout = (layout: Layout) =>
-  clamp(
-    layout.reduce((max, item) => Math.max(max, item.x + item.w), 1),
-    1,
-    MAX_COLUMNS,
-  );
+const layoutsOverlap = (left: BlockLayout, right: BlockLayout) =>
+  left.x < right.x + right.width &&
+  left.x + left.width > right.x &&
+  left.y < right.y + right.height &&
+  left.y + left.height > right.y;
 
-const rglLayoutFor = (widget: Widget): Layout =>
-  widget.blocks.map((block) => {
-    const layout = getLayout(block);
-    return {
-      i: block.id,
-      x: layout.x,
-      y: layout.y,
-      w: layout.width,
-      h: layout.height,
-      minW: 1,
-      minH: 1,
-      maxW: MAX_COLUMNS,
-      maxH: 2,
-    } satisfies LayoutItem;
+const canPlaceBlock = (widget: Widget, blockId: string, nextLayout: BlockLayout) =>
+  nextLayout.x >= 0 &&
+  nextLayout.x + nextLayout.width <= MAX_COLUMNS &&
+  !widget.blocks.some((block) => {
+    if (block.id === blockId) return false;
+    return layoutsOverlap(nextLayout, getLayout(block));
   });
 
-const widgetWithRglLayout = (widget: Widget, layout: Layout) => {
-  const domainLayout = layout.map((item) => {
-    let width = clamp(Math.round(item.w), 1, MAX_COLUMNS);
-    let height = clamp(Math.round(item.h), 1, 2);
-    if (width === 1 && height === 2) {
-      width = 2;
-      height = 2;
-    }
-    const x = clamp(Math.round(item.x), 0, MAX_COLUMNS - width);
-    return {
-      i: item.i,
-      x,
-      y: clamp(Math.round(item.y), 0, 100),
-      w: width,
-      h: height,
-    };
-  });
-  const byId = new Map(domainLayout.map((item) => [item.i, item]));
-  const nextColumns = columnsForLayout(domainLayout);
-  return {
-    ...widget,
-    config: { ...widget.config, grid: { columns: nextColumns } },
-    blocks: widget.blocks.map((block) => {
-      const item = byId.get(block.id);
-      if (!item) return block;
-      return {
-        ...block,
-        config: {
-          ...block.config,
-          layout: {
-            x: item.x,
-            y: item.y,
-            width: item.w,
-            height: item.h,
-          },
-        },
-      };
-    }),
-  } satisfies Widget;
+const findPlacement = (
+  widget: Widget,
+  blockId: string,
+  width: number,
+  height: number,
+  preferredX: number,
+  preferredY: number,
+) => {
+  const startY = clamp(preferredY, 0, 100);
+  const startX = clamp(preferredX, 0, MAX_COLUMNS - width);
+  const candidates = [
+    { x: startX, y: startY },
+    ...Array.from({ length: 101 - startY }, (_, index) => ({ x: 0, y: startY + index })),
+  ];
+  return candidates
+    .map(({ x, y }) => ({ x, y, width, height }))
+    .find((layout) => canPlaceBlock(widget, blockId, layout));
 };
 
-const layoutEquals = (left: Layout, right: Layout) =>
-  left.length === right.length &&
-  left.every((item) => {
-    const other = right.find((candidate) => candidate.i === item.i);
-    return (
-      other && item.x === other.x && item.y === other.y && item.w === other.w && item.h === other.h
-    );
-  });
+const gridRowsFor = (widget: Widget) =>
+  Math.min(
+    100,
+    Math.max(
+      2,
+      ...widget.blocks.map((block) => {
+        const layout = getLayout(block);
+        return layout.y + layout.height + 1;
+      }),
+    ),
+  );
 
 const EditorBlock = ({
   block,
@@ -218,26 +198,65 @@ const EditorBlock = ({
   onSelect,
   onRemove,
   removeLabel,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onResize,
+  dragging,
 }: {
   block: WidgetBlock;
   selected: boolean;
   onSelect: () => void;
   onRemove: () => void;
   removeLabel: string;
+  onPointerDown: (event: PointerEvent<HTMLButtonElement>, blockId: string) => void;
+  onPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerCancel: () => void;
+  onResize: (width: number, height: number) => void;
+  dragging: boolean;
 }) => {
+  const layout = getLayout(block);
   return (
     <article
-      className={`${canvasStyles.block} ${styles.sortableBlock} ${selected ? canvasStyles.selected : ''}`}
+      className={`${canvasStyles.block} ${styles.sortableBlock} ${selected ? canvasStyles.selected : ''} ${dragging ? styles.draggingBlock : ''}`}
       data-block-id={block.id}
+      style={
+        {
+          gridColumn: `${layout.x + 1} / span ${layout.width}`,
+          gridRow: `${layout.y + 1} / span ${layout.height}`,
+        } as CSSProperties
+      }
       onClick={onSelect}
     >
       <button
         className={`${styles.dragHandle} widget-drag-handle`}
         type="button"
         aria-label="Move block"
+        onPointerDown={(event) => onPointerDown(event, block.id)}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
       >
         <Icon data={Grip} size={16} />
       </button>
+      <div className={styles.sizeControls} onClick={(event) => event.stopPropagation()}>
+        {blockSizes.map((size) => (
+          <button
+            className={
+              layout.width === size.width && layout.height === size.height
+                ? styles.sizeButtonActive
+                : styles.sizeButton
+            }
+            key={size.label}
+            type="button"
+            onClick={() => onResize(size.width, size.height)}
+          >
+            {size.label}
+          </button>
+        ))}
+      </div>
       <WidgetBlockContent block={block} />
       <button
         className={styles.removeBlock}
@@ -269,9 +288,17 @@ export const WidgetEditorPage = ({
   const [isSaving, setSaving] = useState(false);
   const [isDirty, setDirty] = useState(false);
   const [isCopied, setCopied] = useState(false);
-  const [isMobile, setMobile] = useState(false);
+  const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
+  const [dropCell, setDropCell] = useState<{ x: number; y: number } | null>(null);
+  const [gridWidth, setGridWidth] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const savePromiseRef = useRef<Promise<void> | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    blockId: string;
+    pointerId: number;
+    preview: { x: number; y: number };
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -302,12 +329,14 @@ export const WidgetEditorPage = ({
   }, [isDirty, widget]);
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 760px)');
-    const update = () => setMobile(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
+    const element = gridRef.current;
+    if (!element) return;
+    const updateWidth = () => setGridWidth(element.getBoundingClientRect().width);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [widget?.id, widget?.blocks.length]);
 
   const updateLocalWidget = (updater: (current: Widget) => Widget) => {
     const current = widgetRef.current;
@@ -320,56 +349,105 @@ export const WidgetEditorPage = ({
 
   const selectedBlock = widget?.blocks.find((block) => block.id === selectedBlockId) ?? null;
 
-  const prepareDrag = (blockId: string) => {
+  const cellFromPoint = (clientX: number, clientY: number, width: number) => {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const bounds = grid.getBoundingClientRect();
+    const cellSize = (bounds.width - GRID_GAP) / MAX_COLUMNS;
+    if (cellSize <= 0) return null;
+    const x = clamp(
+      Math.floor((clientX - bounds.left) / (cellSize + GRID_GAP)),
+      0,
+      MAX_COLUMNS - width,
+    );
+    const y = clamp(Math.floor((clientY - bounds.top) / (cellSize + GRID_GAP)), 0, 100);
+    return { x, y };
+  };
+
+  const updateDragPreview = (clientX: number, clientY: number) => {
+    const drag = dragRef.current;
     const current = widgetRef.current;
-    if (!current) return;
-    const shouldSquareBlocks =
-      current.blocks.length > 1 &&
-      current.blocks.some((block) => {
-        const layout = getLayout(block);
-        return layout.width === 2 && layout.height === 1;
-      });
-    if (!shouldSquareBlocks) return;
-    const nextWidget = {
-      ...current,
-      config: { ...current.config, grid: { columns: 1 } },
-      blocks: current.blocks.map((block) => {
-        const layout = getLayout(block);
-        return layout.width === 2 && layout.height === 1
-          ? { ...block, config: { ...block.config, layout: { ...layout, width: 1 } } }
-          : block;
-      }),
+    const block = current?.blocks.find((item) => item.id === drag?.blockId);
+    if (!drag || !current || !block) return;
+    const layout = getLayout(block);
+    const cell = cellFromPoint(clientX, clientY, layout.width);
+    if (!cell) return;
+    drag.preview = cell;
+    setDropCell(cell);
+  };
+
+  const handleBlockPointerDown = (event: PointerEvent<HTMLButtonElement>, blockId: string) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const block = widgetRef.current?.blocks.find((item) => item.id === blockId);
+    if (!block) return;
+    const layout = getLayout(block);
+    dragRef.current = {
+      blockId,
+      pointerId: event.pointerId,
+      preview: { x: layout.x, y: layout.y },
     };
-    widgetRef.current = nextWidget;
-    setWidget(nextWidget);
-    setDirty(true);
+    setDraggingBlockId(blockId);
+    setDropCell({ x: layout.x, y: layout.y });
     setSelectedBlockId(blockId);
     setActivePanel('block');
   };
 
-  const updateGridState = (nextLayout: Layout) => {
+  const handleBlockPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    updateDragPreview(event.clientX, event.clientY);
+  };
+
+  const handleBlockPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
     const current = widgetRef.current;
-    if (!current || layoutEquals(rglLayoutFor(current), nextLayout)) return;
-    const nextWidget = widgetWithRglLayout(current, nextLayout);
-    widgetRef.current = nextWidget;
-    setWidget(nextWidget);
-    setDirty(true);
-  };
-
-  const handleGridLayoutChange = (nextLayout: Layout) => {
-    if (isMobile) return;
-    updateGridState(nextLayout);
-  };
-
-  const handleGridInteractionStart: EventCallback = (_layout, _oldItem, newItem) => {
-    if (newItem) {
-      setSelectedBlockId(newItem.i);
-      setActivePanel('block');
+    if (!drag || drag.pointerId !== event.pointerId || !current) return;
+    const block = current.blocks.find((item) => item.id === drag.blockId);
+    if (block) {
+      const layout = getLayout(block);
+      const nextLayout = { ...layout, ...drag.preview };
+      if (canPlaceBlock(current, drag.blockId, nextLayout)) {
+        updateLocalWidget((widget) => ({
+          ...widget,
+          config: { ...widget.config, grid: { columns: MAX_COLUMNS } },
+          blocks: widget.blocks.map((item) =>
+            item.id === drag.blockId
+              ? { ...item, config: { ...item.config, layout: nextLayout } }
+              : item,
+          ),
+        }));
+      }
     }
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    dragRef.current = null;
+    setDraggingBlockId(null);
+    setDropCell(null);
   };
 
-  const handleGridInteractionStop: EventCallback = (nextLayout) => {
-    if (!isMobile) updateGridState(nextLayout);
+  const handleBlockPointerCancel = () => {
+    dragRef.current = null;
+    setDraggingBlockId(null);
+    setDropCell(null);
+  };
+
+  const handleResizeBlock = (blockId: string, width: number, height: number) => {
+    const current = widgetRef.current;
+    if (!current) return;
+    const block = current.blocks.find((item) => item.id === blockId);
+    if (!block) return;
+    const layout = getLayout(block);
+    const nextLayout = findPlacement(current, blockId, width, height, layout.x, layout.y);
+    if (!nextLayout) return;
+    updateLocalWidget((widget) => ({
+      ...widget,
+      config: { ...widget.config, grid: { columns: MAX_COLUMNS } },
+      blocks: widget.blocks.map((item) =>
+        item.id === blockId ? { ...item, config: { ...item.config, layout: nextLayout } } : item,
+      ),
+    }));
   };
 
   const handleAddBlock = async (type: BlockType) => {
@@ -408,13 +486,9 @@ export const WidgetEditorPage = ({
     try {
       await deleteBlock(blockId);
       const blocks = current.blocks.filter((block) => block.id !== blockId);
-      const remainingLayout = blocks.map((block) => {
-        const layout = getLayout(block);
-        return { i: block.id, x: layout.x, y: layout.y, w: layout.width, h: layout.height };
-      });
       const nextWidget = {
         ...current,
-        config: { ...current.config, grid: { columns: columnsForLayout(remainingLayout) } },
+        config: { ...current.config, grid: { columns: MAX_COLUMNS } },
         blocks,
       };
       updateLocalWidget(() => nextWidget);
@@ -525,19 +599,12 @@ export const WidgetEditorPage = ({
     );
 
   const columns = widget.config.grid.columns;
-  const gridColumns = isMobile ? 1 : MAX_COLUMNS;
-  const gridLayout = isMobile
-    ? widget.blocks.map((block, index) => {
-        const layout = getLayout(block);
-        return {
-          i: block.id,
-          x: 0,
-          y: index,
-          w: 1,
-          h: layout.height,
-        } satisfies LayoutItem;
-      })
-    : rglLayoutFor(widget);
+  const gridRows = gridRowsFor(widget);
+  const gridStyle = {
+    '--grid-cell-size': gridWidth
+      ? `${Math.max((gridWidth - GRID_GAP) / MAX_COLUMNS, 0)}px`
+      : undefined,
+  } as CSSProperties;
   const palette = paletteTokens[widget.config.palette];
   const canvasStyle = {
     '--widget-light-accent': palette.light.accent,
@@ -548,7 +615,7 @@ export const WidgetEditorPage = ({
     '--widget-dark-soft': palette.dark.soft,
     '--widget-dark-ink': palette.dark.ink,
     '--widget-dark-surface': palette.dark.surface,
-    '--widget-columns': gridColumns,
+    '--widget-columns': MAX_COLUMNS,
   } as CSSProperties;
 
   return (
@@ -648,44 +715,21 @@ export const WidgetEditorPage = ({
                   : 'Add your first block from the library.'}
               </p>
             ) : (
-              <div
-                className={styles.gridLayoutHost}
-                onMouseDownCapture={(event) => {
-                  const target = event.target;
-                  if (target instanceof Element && target.closest('.widget-drag-handle')) {
-                    const block = target.closest<HTMLElement>('[data-block-id]');
-                    const blockId = block?.dataset.blockId;
-                    if (blockId) flushSync(() => prepareDrag(blockId));
-                  }
-                }}
-              >
-                <EditorGridLayout
-                  className={styles.editorBlocks}
-                  cols={gridColumns}
-                  layout={gridLayout}
-                  rowHeight={GRID_ROW_HEIGHT}
-                  maxRows={100}
-                  margin={[18, 18]}
-                  containerPadding={[0, 0]}
-                  compactType={null}
-                  preventCollision
-                  isBounded
-                  draggableHandle=".widget-drag-handle"
-                  draggableCancel="input, textarea, select, .removeBlock"
-                  resizeHandles={['se']}
-                  resizeHandle={(axis, ref) => (
-                    <span
-                      ref={ref as Ref<HTMLSpanElement>}
-                      className={`react-resizable-handle react-resizable-handle-${axis} ${styles.resizeHandle}`}
-                      aria-label={t.resize}
-                    />
-                  )}
-                  onLayoutChange={handleGridLayoutChange}
-                  onDragStart={handleGridInteractionStart}
-                  onDragStop={handleGridInteractionStop}
-                  onResizeStart={handleGridInteractionStart}
-                  onResizeStop={handleGridInteractionStop}
-                >
+              <div className={styles.gridLayoutHost}>
+                <div className={styles.editorBlocks} ref={gridRef} style={gridStyle}>
+                  {draggingBlockId &&
+                    Array.from({ length: gridRows * MAX_COLUMNS }, (_, index) => {
+                      const x = index % MAX_COLUMNS;
+                      const y = Math.floor(index / MAX_COLUMNS);
+                      const isActive = dropCell?.x === x && dropCell.y === y;
+                      return (
+                        <div
+                          className={`${styles.dropCell} ${isActive ? styles.dropCellActive : ''}`}
+                          key={`${x}:${y}`}
+                          style={{ gridColumn: x + 1, gridRow: y + 1 }}
+                        />
+                      );
+                    })}
                   {widget.blocks.map((block) => (
                     <EditorBlock
                       key={block.id}
@@ -697,9 +741,15 @@ export const WidgetEditorPage = ({
                       }}
                       onRemove={() => void handleRemoveBlock(block.id)}
                       removeLabel={t.removeBlock}
+                      onPointerDown={handleBlockPointerDown}
+                      onPointerMove={handleBlockPointerMove}
+                      onPointerUp={handleBlockPointerUp}
+                      onPointerCancel={handleBlockPointerCancel}
+                      onResize={(width, height) => handleResizeBlock(block.id, width, height)}
+                      dragging={draggingBlockId === block.id}
                     />
                   ))}
-                </EditorGridLayout>
+                </div>
               </div>
             )}
             <div className={`${canvasStyles.canvasFooter} ${styles.canvasFooter}`}>
