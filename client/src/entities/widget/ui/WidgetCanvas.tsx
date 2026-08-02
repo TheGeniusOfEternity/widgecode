@@ -307,6 +307,7 @@ export const WidgetCanvas = ({
   locale = 'en',
 }: WidgetCanvasProps) => {
   const tokens = paletteTokens[palette];
+  const gridColumns = Math.max(1, Math.min(columns, 2));
   const style = {
     '--widget-light-accent': tokens.light.accent,
     '--widget-light-soft': tokens.light.soft,
@@ -316,7 +317,7 @@ export const WidgetCanvas = ({
     '--widget-dark-soft': tokens.dark.soft,
     '--widget-dark-ink': tokens.dark.ink,
     '--widget-dark-surface': tokens.dark.surface,
-    '--widget-columns': Math.max(1, Math.min(columns, 2)),
+    '--widget-columns': gridColumns,
     '--widget-width': width ? `${width}px` : undefined,
     '--widget-height': height ? `${height}px` : undefined,
   } as CSSProperties;
@@ -333,7 +334,7 @@ export const WidgetCanvas = ({
         <span className={styles.brandDot} />
         <span>live widget preview</span>
       </div>
-      <div className={styles.blocks}>
+      <div className={styles.blocks} data-columns={gridColumns}>
         {blocks.length === 0 && (
           <p className={styles.empty}>Add a block to start shaping your widget.</p>
         )}

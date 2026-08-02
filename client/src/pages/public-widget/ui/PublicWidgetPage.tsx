@@ -56,27 +56,8 @@ export const PublicWidgetPage = ({ slug, locale }: PublicWidgetPageProps) => {
     },
   };
   const { rendered } = payload;
-  const sourceNames = [
-    ...new Set(
-      widget.blocks
-        .map((block) => {
-          if (block.type.startsWith('github')) return 'GitHub';
-          if (block.type.startsWith('leetcode')) return 'LeetCode';
-          return null;
-        })
-        .filter(Boolean),
-    ),
-  ];
-
   return (
     <main className={styles.publicPage} style={{ minHeight: `${Math.max(widget.height, 240)}px` }}>
-      <header className={styles.publicHeader}>
-        <div>
-          <span>{sourceNames.join(' + ') || 'Developer stats'}</span>
-          <h1>{widget.title}</h1>
-        </div>
-        <small>{new Date(widget.updatedAt).toLocaleDateString()}</small>
-      </header>
       <WidgetCanvas
         blocks={widget.blocks}
         palette={widget.config.palette}
@@ -87,9 +68,6 @@ export const PublicWidgetPage = ({ slug, locale }: PublicWidgetPageProps) => {
         renderedBlocks={rendered.blocks}
         locale={locale}
       />
-      <footer className={styles.publicFooter}>
-        /{widget.slug} · cached {Math.round(rendered.cacheTtlSeconds / 60)} min
-      </footer>
     </main>
   );
 };

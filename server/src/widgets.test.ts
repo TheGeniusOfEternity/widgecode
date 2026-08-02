@@ -62,7 +62,7 @@ it('creates a widget with preset blocks and a generated slug', async () => {
   prismaMocks.widget.findUnique.mockResolvedValue(null);
   prismaMocks.widget.create.mockResolvedValue(widget);
 
-  const response = await agent
+  await agent
     .post('/api/widgets')
     .set('Authorization', `Bearer ${token}`)
     .send({
@@ -73,10 +73,13 @@ it('creates a widget with preset blocks and a generated slug', async () => {
     })
     .expect(201);
 
-  expect(response.body.widget.slug).toContain('gh-stats-github-overview-');
   expect(prismaMocks.widget.create).toHaveBeenCalledWith(
     expect.objectContaining({
-      data: expect.objectContaining({ title: 'GitHub overview', userId: user.id }),
+      data: expect.objectContaining({
+        title: 'GitHub overview',
+        userId: user.id,
+        slug: expect.stringContaining('gh-stats-github-stats-github-langs-'),
+      }),
     }),
   );
   const createCall = prismaMocks.widget.create.mock.calls[0]?.[0] as {

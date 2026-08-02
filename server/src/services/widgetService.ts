@@ -27,9 +27,13 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, '')
     .replace(/[а-яё]/gi, (character) => character);
 
-const createSlug = async (source: string, presetId: string | undefined) => {
+const createSlug = async (source: string, blocks: { type: string }[]) => {
   const prefix = source === 'leetcode' ? 'leetcode-stats' : 'gh-stats';
-  const name = slugify(presetId || 'custom') || 'custom';
+  const name =
+    blocks
+      .map((block) => slugify(block.type))
+      .filter(Boolean)
+      .join('-') || 'custom';
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const slug = `${prefix}-${name}-${randomBytes(3).toString('hex')}`;
@@ -179,7 +183,7 @@ export class WidgetService {
       renderFormat: 'iframe',
       presetId: input.presetId,
     });
-    const slug = await createSlug(input.source, input.presetId);
+    const slug = await createSlug(input.source, blocks);
 
     return prisma.widget.create({
       data: {
