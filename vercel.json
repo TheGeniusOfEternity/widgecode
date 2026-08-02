@@ -7,15 +7,27 @@
   "rewrites": [
     {
       "source": "/api/widgets/:widgetId/blocks/reorder",
-      "destination": "/api/widgets/actions?widgetId=:widgetId&action=blocks"
+      "destination": "/api/widgets-resource?resource=widget&widgetId=:widgetId&action=blocks"
     },
     {
       "source": "/api/widgets/:widgetId/blocks",
-      "destination": "/api/widgets/actions?widgetId=:widgetId&action=blocks"
+      "destination": "/api/widgets-resource?resource=widget&widgetId=:widgetId&action=blocks"
     },
     {
       "source": "/api/widgets/:widgetId/preview",
-      "destination": "/api/widgets/actions?widgetId=:widgetId&action=preview"
+      "destination": "/api/widgets-resource?resource=widget&widgetId=:widgetId&action=preview"
+    },
+    {
+      "source": "/api/widgets/:widgetId",
+      "destination": "/api/widgets-resource?resource=widget&widgetId=:widgetId"
+    },
+    {
+      "source": "/api/blocks/:blockId",
+      "destination": "/api/widgets-resource?resource=block&blockId=:blockId"
+    },
+    {
+      "source": "/api/public/widgets/:slug",
+      "destination": "/api/widgets-resource?resource=public&slug=:slug"
     },
     {
       "source": "/(.*)",
