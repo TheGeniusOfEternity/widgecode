@@ -92,7 +92,7 @@ export const updateBlockLayouts = async (
   layouts: { blockId: string; layout: BlockLayout }[],
   columns?: number,
 ) => {
-  const response = await apiClient<{ widget: Widget }>(`/widgets/${widgetId}/blocks/reorder`, {
+  const response = await apiClient<{ widget: Widget }>(`/widgets/${widgetId}/blocks`, {
     method: 'PUT',
     body: JSON.stringify({ layouts, columns }),
   });

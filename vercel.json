@@ -6,6 +6,10 @@
   "outputDirectory": "client/dist",
   "rewrites": [
     {
+      "source": "/api/widgets/:widgetId/blocks/reorder",
+      "destination": "/api/widgets/:widgetId/blocks"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

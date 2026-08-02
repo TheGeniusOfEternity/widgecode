@@ -13,7 +13,7 @@ router.get('/:id', widgetController.get);
 router.put('/:id', widgetController.update);
 router.delete('/:id', widgetController.remove);
 router.post('/:widgetId/blocks', widgetController.addBlock);
-router.put('/:widgetId/blocks/reorder', widgetController.reorderBlocks);
+router.put('/:widgetId/blocks', widgetController.reorderBlocks);
 router.post('/:widgetId/preview', widgetController.preview);
 
 export { router as widgetsRouter };
