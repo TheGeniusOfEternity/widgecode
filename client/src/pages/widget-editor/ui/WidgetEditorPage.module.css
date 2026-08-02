@@ -178,11 +178,10 @@
 }
 
 .canvasArea {
-  display: grid;
-  grid-template-rows: auto auto;
+  display: flex;
+  flex-direction: column;
   align-content: start;
-  gap: 10px;
-  padding: 14px 14px 28px;
+  padding: 14px;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -196,6 +195,8 @@
   letter-spacing: 0.06em;
   overflow: hidden;
   text-transform: uppercase;
+  margin-bottom: 1rem;
+  min-height: fit-content;
 }
 .canvasMeta span:first-child {
   overflow: hidden;
@@ -204,6 +205,14 @@
 }
 
 .gridSurface {
+  --widget-light-accent: #8f71e8;
+  --widget-light-soft: #eee8ff;
+  --widget-light-ink: #27213d;
+  --widget-light-surface: #fbf9ff;
+  --widget-dark-accent: #bda9ff;
+  --widget-dark-soft: #30274f;
+  --widget-dark-ink: #f4efff;
+  --widget-dark-surface: #191526;
   --widget-accent: var(--widget-light-accent);
   --widget-soft: var(--widget-light-soft);
   --widget-ink: var(--widget-light-ink);
@@ -215,7 +224,6 @@
   align-self: start;
   width: 100%;
   height: auto;
-  min-height: 0;
   padding: 28px;
   color: var(--widget-ink);
   overflow: visible;
@@ -295,6 +303,7 @@
   overflow: visible;
 }
 .editorBlocks {
+  --grid-cell-size: minmax(110px, auto);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: var(--grid-cell-size, minmax(110px, auto));
