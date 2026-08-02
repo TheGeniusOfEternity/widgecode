@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## [0.3.0] - 2026-08-02
+
+### Added
+
+- Added automatic redirects from auth pages for already authenticated users.
+- Added localized authentication validation and API error messages in Russian and English.
+- Added branded loading states for the editor and skeletons for iframe, public widget, and live previews.
+- Added Russian and English project documentation and proprietary licensing terms.
+
+### Changed
+
+- Increased username autosave debounce to 1.5 seconds.
+- Prevented stale autosave requests from overwriting newer editor input.
+- Renamed project branding, package metadata, Docker Compose project name, API user agent, and auth cookies to WidgeCode.
+- Added a stable `widgecode` Docker Compose project name for renamed root folders.
+
+### Fixed
+
+- Prevented auth form layout shifts when validation errors appear.
+- Replaced the initial iframe loader with a widget skeleton while public data is loading.
+
 ## [0.2.0] - 2026-08-02
 
 ### Added

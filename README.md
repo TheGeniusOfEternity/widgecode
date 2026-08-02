@@ -1,27 +1,27 @@
 # WidgeCode
 
-Персональные live-виджеты для GitHub, LeetCode и других источников. Соберите виджет, настройте блоки и опубликуйте его как iframe.
+Personal live widgets for GitHub, LeetCode, and other sources. Build a widget, configure its blocks, and publish it as an iframe.
 
-[English](README.en.md) | Русский
+[Русский](README.ru.md) | English
 
-## Возможности
+## Features
 
-- Галерея персональных виджетов.
-- Блоки статистики GitHub, языков и LeetCode.
-- Редактор с сеткой, изменением размеров и live-preview.
-- Публичные страницы и iframe-встраивание.
-- Авторизация по email и через Yandex ID.
-- Светлая и тёмная темы.
+- Personal widget gallery.
+- GitHub, language, and LeetCode statistics blocks.
+- Grid editor with resizing and live preview.
+- Public pages and iframe embeds.
+- Email and Yandex ID authentication.
+- Light and dark themes.
 
-## Стек
+## Stack
 
 - React 19, TypeScript, Vite.
-- Express 5, Prisma и PostgreSQL.
-- Gravity UI, Framer Motion и Zustand.
+- Express 5, Prisma, and PostgreSQL.
+- Gravity UI, Framer Motion, and Zustand.
 
-## Быстрый старт
+## Quick Start
 
-Требования: Node.js 22+, npm и Docker.
+Requirements: Node.js 22+, npm, and Docker.
 
 ```bash
 cp .env.example .env
@@ -32,14 +32,14 @@ npm run prisma:migrate -w server
 npm run dev
 ```
 
-После запуска:
+After startup:
 
-- клиент: http://localhost:5173
+- client: http://localhost:5173
 - API: http://localhost:4000
 
-Для существующей базы данных не запускайте `prisma migrate reset`: команда удаляет все данные. Если PostgreSQL уже запущен на порту `5432`, Docker-контейнер запускать не нужно.
+Do not run `prisma migrate reset` against an existing database: it deletes all data. If PostgreSQL is already running on port `5432`, Docker does not need to start another database container.
 
-## Команды
+## Commands
 
 ```bash
 npm run dev
@@ -50,12 +50,12 @@ npm run lint
 npm run format:check
 ```
 
-## Структура
+## Structure
 
-- `client/` — React-клиент и UI.
-- `server/` — Express API, Prisma-модели и миграции.
+- `client/` — React client and UI.
+- `server/` — Express API, Prisma models, and migrations.
 - `api/` — Vercel API handlers.
 
-## Лицензия
+## License
 
-WidgeCode распространяется на проприетарных условиях. Копирование, распространение, изменение и коммерческое использование без письменного разрешения запрещены. Подробности: [LICENSE](LICENSE).
+WidgeCode is distributed under proprietary terms. Copying, distribution, modification, and commercial use without written permission are prohibited. See [LICENSE](LICENSE).
