@@ -149,11 +149,14 @@ export const WidgetCard = ({
             >
               <Icon data={Gear} size={18} />
             </Button>
-            {widget.public && (
-              <Button view="outlined" onClick={() => onCopy(widget)} aria-label={labels.copy}>
-                <Icon data={Copy} size={18} />
-              </Button>
-            )}
+            <Button
+              disabled={!widget.public}
+              view="outlined"
+              onClick={() => onCopy(widget)}
+              aria-label={labels.copy}
+            >
+              <Icon data={Copy} size={18} />
+            </Button>
             <Button
               view="outlined-danger"
               onClick={() => setDeleteModalOpen(true)}

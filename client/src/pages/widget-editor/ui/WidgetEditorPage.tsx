@@ -41,6 +41,9 @@ import canvasStyles from '@/entities/widget/ui/WidgetCanvas.module.css';
 const MAX_BLOCKS = 5;
 const MAX_COLUMNS = 2;
 const GRID_GAP = 18;
+const WIDGET_WIDTH = 600;
+const WIDGET_BASE_HEIGHT = 200;
+const WIDGET_ROW_HEIGHT = 200;
 const DEFAULT_LAYOUT: BlockLayout = { x: 0, y: 0, width: 1, height: 1 };
 
 const blockSizes = [
@@ -102,6 +105,20 @@ const layoutFromBlock = (block: WidgetBlock, index: number, columns: number): Bl
   };
 };
 
+const getWidgetDimensions = (blocks: WidgetBlock[]) => {
+  const rows = Math.max(
+    1,
+    ...blocks.map((block, index) => {
+      const layout = layoutFromBlock(block, index, MAX_COLUMNS);
+      return layout.y + layout.height;
+    }),
+  );
+  return {
+    width: WIDGET_WIDTH,
+    height: Math.min(1200, WIDGET_BASE_HEIGHT + rows * WIDGET_ROW_HEIGHT),
+  };
+};
+
 const normalizeWidget = (widget: Widget) => {
   const columns = MAX_COLUMNS;
   const legacySources = widget.config?.sources ?? {};
@@ -126,10 +143,13 @@ const normalizeWidget = (widget: Widget) => {
         },
       };
     });
+  const dimensions = getWidgetDimensions(blocks);
+  changed = changed || widget.width !== dimensions.width || widget.height !== dimensions.height;
 
   return {
     widget: {
       ...widget,
+      ...dimensions,
       config: {
         ...widget.config,
         palette: widget.config?.palette ?? 'lavender',
@@ -418,8 +438,9 @@ export const WidgetEditorPage = ({
     const current = widgetRef.current;
     if (!current) return;
     const nextWidget = updater(current);
-    widgetRef.current = nextWidget;
-    setWidget(nextWidget);
+    const sizedWidget = { ...nextWidget, ...getWidgetDimensions(nextWidget.blocks) };
+    widgetRef.current = sizedWidget;
+    setWidget(sizedWidget);
     setDirty(true);
   };
 
@@ -726,7 +747,6 @@ export const WidgetEditorPage = ({
       </div>
     );
 
-  const columns = widget.config.grid.columns;
   const gridRows = gridRowsFor(widget);
   const gridStyle = {
     '--grid-cell-size': gridWidth
@@ -824,7 +844,7 @@ export const WidgetEditorPage = ({
           <div className={styles.canvasMeta}>
             <span>canvas / {widget.slug}</span>
             <span>
-              {columns} {t.columns.toLowerCase()} · {widget.width} × {widget.height}
+              {widget.width} × {widget.height}
             </span>
           </div>
           <div
@@ -969,45 +989,6 @@ const WidgetConfigPanel = ({
           onUpdate={(value) => onChange((current) => ({ ...current, title: value }))}
         />
       </label>
-      <div className={styles.twoFields}>
-        <label className={styles.field}>
-          <span>{t.width}</span>
-          <TextInput
-            size="l"
-            type="number"
-            value={String(widget.width)}
-            onUpdate={(value) =>
-              onChange((current) => ({
-                ...current,
-                width: clamp(Number(value), 280, 1600),
-              }))
-            }
-          />
-        </label>
-        <label className={styles.field}>
-          <span>{t.height}</span>
-          <TextInput
-            size="l"
-            type="number"
-            value={String(widget.height)}
-            onUpdate={(value) =>
-              onChange((current) => ({
-                ...current,
-                height: clamp(Number(value), 160, 1200),
-              }))
-            }
-          />
-        </label>
-      </div>
-      <div className={styles.gridInfo}>
-        <span>{t.columns}</span>
-        <strong>{widget.config.grid.columns} / 2</strong>
-        <small>
-          {locale === 'ru'
-            ? 'Сетка всегда состоит из двух колонок.'
-            : 'The grid always uses two columns.'}
-        </small>
-      </div>
       <div className={styles.modeField}>
         <span>{t.palette}</span>
         <div className={styles.modeOptions}>

@@ -19,7 +19,7 @@ const presetIdSchema = z.enum(Object.keys(presetDefinitions) as [string, ...stri
 
 const createWidgetSchema = z.object({
   title: z.string().trim().min(1, 'Widget name is required').max(80),
-  source: sourceTypeSchema,
+  source: sourceTypeSchema.optional(),
   username: z.string().trim().max(100).optional(),
   presetId: presetIdSchema.optional(),
   width: z.number().int().min(280).max(1600).optional(),

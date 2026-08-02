@@ -42,7 +42,7 @@ export const messages = {
     draft: 'Не опубликован',
     createTitle: 'Новый виджет',
     createDescription:
-      'Выберите источник и начните с готового пресета. Username указывается в каждом блоке.',
+      'Выберите готовый пресет или начните с чистого canvas. Username указывается в каждом блоке.',
     widgetName: 'Название виджета',
     source: 'Источник',
     username: 'Username',
@@ -133,7 +133,7 @@ export const messages = {
     draft: 'Unpublished',
     createTitle: 'New widget',
     createDescription:
-      'Choose a source and start from a ready-made preset. Add usernames per block.',
+      'Choose a ready-made preset or start with a clean canvas. Add usernames per block.',
     widgetName: 'Widget name',
     source: 'Source',
     username: 'Username',

@@ -75,6 +75,16 @@ const getOAuthToken = () => {
   return new URLSearchParams(window.location.hash.slice(1)).get('access_token');
 };
 
+const getDocumentTitle = (route: AppRoute, authTab: AuthTab) => {
+  if (route === 'auth')
+    return authTab === 'signup' ? 'WidgeCode | Register' : 'WidgeCode | Sign in';
+  if (route === 'dashboard') return 'WidgeCode | Dashboard';
+  if (route === 'editor') return 'WidgeCode | Widget editor';
+  if (route === 'public') return 'WidgeCode | Public widget';
+  if (route === 'callback') return 'WidgeCode | Sign in';
+  return 'WidgeCode';
+};
+
 export const App = () => {
   const [theme, setTheme] = useState<AppTheme>(
     () => (localStorage.getItem(APP_THEME_STORAGE_KEY) as AppTheme) || getSystemTheme(),
@@ -267,6 +277,10 @@ export const App = () => {
   useEffect(() => {
     localStorage.setItem(APP_LOCALE_STORAGE_KEY, locale);
   }, [locale]);
+
+  useEffect(() => {
+    document.title = getDocumentTitle(route, authTab);
+  }, [authTab, route]);
 
   const isAuthorized = authStatus === 'authenticated';
   const isEmbedRoute =

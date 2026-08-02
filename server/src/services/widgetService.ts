@@ -82,6 +82,17 @@ const layoutFromBlock = (block: { position: number; config: unknown }): BlockLay
   return result.success ? result.data : { x: 0, y: block.position, width: 1, height: 1 };
 };
 
+const widgetDimensions = (blocks: { position: number; config: unknown }[]) => {
+  const rows = Math.max(
+    1,
+    ...blocks.map((block) => {
+      const layout = layoutFromBlock(block);
+      return layout.y + layout.height;
+    }),
+  );
+  return { width: 600, height: Math.min(1200, 200 + rows * 200) };
+};
+
 const normalizeBlockConfig = (type: BlockType, config: unknown, layout?: BlockLayout) => {
   const input = config && typeof config === 'object' ? (config as Record<string, unknown>) : {};
   const defaults =
@@ -159,7 +170,7 @@ export class WidgetService {
     userId: string,
     input: {
       title: string;
-      source: 'github' | 'leetcode';
+      source?: 'github' | 'leetcode';
       username?: string;
       presetId?: string;
       width?: number;
@@ -169,46 +180,48 @@ export class WidgetService {
     const preset = input.presetId
       ? presetDefinitions[input.presetId as keyof typeof presetDefinitions]
       : undefined;
+    const source = preset?.source ?? input.source ?? 'github';
     const blocks = preset?.blocks ?? [
-      { type: input.source === 'leetcode' ? 'leetcode-stats' : 'github-stats', config: {} },
+      { type: source === 'leetcode' ? 'leetcode-stats' : 'github-stats', config: {} },
     ];
     if (blocks.length > MAX_WIDGET_BLOCKS) {
       throw new AppError(400, `A widget can contain at most ${MAX_WIDGET_BLOCKS} blocks`);
     }
     const username = input.username?.trim();
+    const blockInputs = blocks.map((block, position) => ({
+      type: block.type,
+      position,
+      config: normalizeBlockConfig(
+        block.type,
+        {
+          ...block.config,
+          ...(getSourceForBlock(block.type) === source && username ? { username } : {}),
+        },
+        { x: 0, y: position, width: 1, height: 1 },
+      ),
+    }));
+    const dimensions = widgetDimensions(blockInputs);
     const config = normalizeConfig({
-      ...(username ? { sources: { [input.source]: { username } } } : {}),
+      ...(username ? { sources: { [source]: { username } } } : {}),
       palette: 'lavender',
       grid: { columns: MAX_GRID_COLUMNS },
       renderFormat: 'iframe',
       presetId: input.presetId,
     });
-    const slug = await createSlug(input.source, blocks);
+    const slug = await createSlug(source, blocks);
 
     return prisma.widget.create({
       data: {
         userId,
         title: input.title.trim(),
         slug,
-        width: input.width ?? 600,
-        height: input.height ?? 400,
+        ...dimensions,
         config: toJson(config),
         blocks: {
-          create: blocks.map((block, position) => ({
+          create: blockInputs.map((block) => ({
             type: block.type,
-            position,
-            config: toJson(
-              normalizeBlockConfig(
-                block.type,
-                {
-                  ...block.config,
-                  ...(getSourceForBlock(block.type) === input.source && username
-                    ? { username }
-                    : {}),
-                },
-                { x: 0, y: position, width: 1, height: 1 },
-              ),
-            ),
+            position: block.position,
+            config: toJson(block.config),
           })),
         },
       },
@@ -239,6 +252,7 @@ export class WidgetService {
     );
     validateLayouts(existing.blocks, nextConfig);
     if (input.public) validatePublicSources(existing.blocks, nextConfig);
+    Object.assign(data, widgetDimensions(existing.blocks));
     if (input.config !== undefined) data.config = toJson(nextConfig);
 
     return prisma.widget.update({ where: { id: widgetId }, data, include: widgetInclude });
@@ -269,9 +283,14 @@ export class WidgetService {
       width: 1,
       height: 1,
     });
-    return prisma.block.create({
+    const created = await prisma.block.create({
       data: { widgetId, type: input.type, position, config: toJson(normalizedConfig) },
     });
+    await prisma.widget.update({
+      where: { id: widgetId },
+      data: widgetDimensions([...widget.blocks, created]),
+    });
+    return created;
   };
 
   updateBlock = async (userId: string, blockId: string, input: { config?: unknown }) => {
@@ -299,10 +318,16 @@ export class WidgetService {
   removeBlock = async (userId: string, blockId: string) => {
     const block = await prisma.block.findFirst({
       where: { id: blockId },
-      include: { widget: true },
+      include: { widget: { include: { blocks: true } } },
     });
     if (!block || block.widget.userId !== userId) throw new AppError(404, 'Block not found');
-    await prisma.block.delete({ where: { id: blockId } });
+    await prisma.$transaction([
+      prisma.block.delete({ where: { id: blockId } }),
+      prisma.widget.update({
+        where: { id: block.widgetId },
+        data: widgetDimensions(block.widget.blocks.filter((item) => item.id !== blockId)),
+      }),
+    ]);
   };
 
   updateLayouts = async (
@@ -337,9 +362,13 @@ export class WidgetService {
       ...nextBlocks.map((block) =>
         prisma.block.update({ where: { id: block.id }, data: { config: toJson(block.config) } }),
       ),
-      ...(columns
-        ? [prisma.widget.update({ where: { id: widgetId }, data: { config: toJson(config) } })]
-        : []),
+      prisma.widget.update({
+        where: { id: widgetId },
+        data: {
+          ...widgetDimensions(nextBlocks),
+          ...(columns ? { config: toJson(config) } : {}),
+        },
+      }),
     ]);
     return ensureWidget(userId, widgetId);
   };

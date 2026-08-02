@@ -4,7 +4,6 @@ import type {
   BlockLayout,
   PublicWidgetResponse,
   RenderedBlock,
-  SourceType,
   Widget,
   WidgetBlock,
   WidgetConfig,
@@ -12,7 +11,6 @@ import type {
 
 export type CreateWidgetInput = {
   title: string;
-  source: SourceType;
   username?: string;
   presetId?: string;
 };

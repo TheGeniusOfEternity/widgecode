@@ -67,7 +67,6 @@ it('creates a widget with preset blocks and a generated slug', async () => {
     .set('Authorization', `Bearer ${token}`)
     .send({
       title: 'GitHub overview',
-      source: 'github',
       username: 'octocat',
       presetId: 'github-overview',
     })
@@ -83,8 +82,14 @@ it('creates a widget with preset blocks and a generated slug', async () => {
     }),
   );
   const createCall = prismaMocks.widget.create.mock.calls[0]?.[0] as {
-    data: { blocks: { create: { config: { layout: { width: number; height: number } } }[] } };
+    data: {
+      width: number;
+      height: number;
+      blocks: { create: { config: { layout: { width: number; height: number } } }[] };
+    };
   };
+  expect(createCall.data.width).toBe(600);
+  expect(createCall.data.height).toBe(600);
   expect(createCall.data.blocks.create).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -198,6 +203,19 @@ it('does not expose another user widget through protected routes', async () => {
       where: { id: 'widget-owned-by-someone-else', userId: user.id },
     }),
   );
+});
+
+it('deletes a widget through the protected route', async () => {
+  const { agent, token } = await authenticatedAgent();
+  prismaMocks.widget.findFirst.mockResolvedValue(widget);
+  prismaMocks.widget.delete.mockResolvedValue(widget);
+
+  await agent
+    .delete(`/api/widgets/${widget.id}`)
+    .set('Authorization', `Bearer ${token}`)
+    .expect(204);
+
+  expect(prismaMocks.widget.delete).toHaveBeenCalledWith({ where: { id: widget.id } });
 });
 
 it('rejects adding a sixth block', async () => {
