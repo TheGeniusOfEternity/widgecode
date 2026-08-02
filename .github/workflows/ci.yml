@@ -25,6 +25,8 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run prisma:generate -w server
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/github_stats?schema=public
 
       - name: Check formatting
         run: npm run format:check

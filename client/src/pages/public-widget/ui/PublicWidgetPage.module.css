@@ -1,0 +1,90 @@
+.publicPage {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  width: min(100%, 900px);
+  margin: 0 auto;
+  padding: 20px;
+  background: transparent;
+}
+
+.publicHeader,
+.publicHeader > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.publicHeader,
+.publicFooter {
+  width: min(100%, var(--public-widget-width, 100%));
+  margin-inline: auto;
+}
+
+.publicHeader {
+  justify-content: space-between;
+}
+
+.publicHeader > div {
+  min-width: 0;
+}
+
+.publicHeader span,
+.publicHeader small,
+.publicFooter {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.publicHeader h1 {
+  margin: 0;
+  overflow: hidden;
+  padding-block: 4px;
+  font-size: clamp(20px, 4vw, 30px);
+  letter-spacing: -0.06em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publicHeader small {
+  white-space: nowrap;
+}
+
+.publicFooter {
+  padding: 0 4px;
+}
+
+.embedPage {
+  display: block;
+  overflow: hidden;
+  background: transparent;
+}
+
+.status {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .publicPage {
+    padding: 12px;
+  }
+
+  .publicHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .publicHeader > div {
+    display: grid;
+    gap: 5px;
+  }
+}
