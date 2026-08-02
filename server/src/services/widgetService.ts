@@ -258,7 +258,7 @@ export class WidgetService {
     if (widget.blocks.length >= MAX_WIDGET_BLOCKS) {
       throw new AppError(400, `A widget can contain at most ${MAX_WIDGET_BLOCKS} blocks`);
     }
-    const position = widget.blocks.length;
+    const position = widget.blocks.reduce((max, block) => Math.max(max, block.position), -1) + 1;
     const lastRow = widget.blocks.reduce(
       (max, block) => Math.max(max, layoutFromBlock(block).y + layoutFromBlock(block).height),
       0,

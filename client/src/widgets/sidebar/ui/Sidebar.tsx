@@ -16,6 +16,7 @@ import { Button, Icon } from '@gravity-ui/uikit';
 export type SidebarLabels = {
   logout: string;
   createWidget: string;
+  openWidget: string;
   language: string;
   theme: string;
   recentWidgets: string;
@@ -91,7 +92,7 @@ export const Sidebar = ({
                 view="flat"
                 className={styles.btnIcon}
                 onClick={() => onOpenWidget(widget.id)}
-                aria-label={labels.createWidget}
+                aria-label={`${labels.openWidget}: ${widget.title}`}
               >
                 <Icon data={PencilToLine} size={20} />
               </Button>

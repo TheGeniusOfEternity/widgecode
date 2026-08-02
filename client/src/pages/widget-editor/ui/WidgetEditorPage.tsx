@@ -1003,8 +1003,8 @@ const WidgetConfigPanel = ({
         <strong>{widget.config.grid.columns} / 2</strong>
         <small>
           {locale === 'ru'
-            ? 'Колонки появляются при переносе блока вправо.'
-            : 'Columns appear when a block is moved to the right.'}
+            ? 'Сетка всегда состоит из двух колонок.'
+            : 'The grid always uses two columns.'}
         </small>
       </div>
       <div className={styles.modeField}>

@@ -44,6 +44,7 @@ export const WidgetsGalleryPage = ({
   const sidebarLabels: SidebarLabels = {
     logout: t.logout,
     createWidget: t.createWidget,
+    openWidget: t.open,
     language: t.language,
     theme: t.theme,
     recentWidgets: t.recentWidgets,

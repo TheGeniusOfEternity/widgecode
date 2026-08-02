@@ -128,6 +128,40 @@ it('creates a new block as a single-column item', async () => {
   );
 });
 
+it('uses the next position after the highest existing block position', async () => {
+  const { agent, token } = await authenticatedAgent();
+  prismaMocks.widget.findFirst.mockResolvedValue({
+    id: widget.id,
+    userId: user.id,
+    config: { grid: { columns: 2 }, palette: 'lavender', renderFormat: 'iframe' },
+    blocks: [
+      {
+        id: 'block-1',
+        position: 0,
+        type: 'text',
+        config: { layout: { x: 0, y: 0, width: 1, height: 1 } },
+      },
+      {
+        id: 'block-3',
+        position: 2,
+        type: 'text',
+        config: { layout: { x: 0, y: 1, width: 1, height: 1 } },
+      },
+    ],
+  });
+  prismaMocks.block.create.mockResolvedValue({});
+
+  await agent
+    .post(`/api/widgets/${widget.id}/blocks`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ type: 'text', config: { text: 'Next block' } })
+    .expect(201);
+
+  expect(prismaMocks.block.create).toHaveBeenCalledWith(
+    expect.objectContaining({ data: expect.objectContaining({ position: 3 }) }),
+  );
+});
+
 it('previews a block without publishing the widget', async () => {
   const { agent, token } = await authenticatedAgent();
   prismaMocks.widget.findFirst.mockResolvedValue({

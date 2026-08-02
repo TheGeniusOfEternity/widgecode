@@ -7,15 +7,27 @@ import {
 } from '@server/widgets/registry.js';
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
+const CACHE_MAX_ENTRIES = 500;
 
 type CacheEntry = { expiresAt: number; value: unknown };
 const responseCache = new Map<string, CacheEntry>();
 
 const getCached = async <T>(key: string, loader: () => Promise<T>) => {
+  const now = Date.now();
   const cached = responseCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+  if (cached && cached.expiresAt > now) return cached.value as T;
+  if (cached) responseCache.delete(key);
 
   const value = await loader();
+  if (responseCache.size >= CACHE_MAX_ENTRIES) {
+    for (const [entryKey, entry] of responseCache) {
+      if (entry.expiresAt <= now) responseCache.delete(entryKey);
+    }
+    if (responseCache.size >= CACHE_MAX_ENTRIES) {
+      const oldestKey = responseCache.keys().next().value;
+      if (oldestKey) responseCache.delete(oldestKey);
+    }
+  }
   responseCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
   return value;
 };

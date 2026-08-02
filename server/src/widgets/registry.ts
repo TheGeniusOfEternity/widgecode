@@ -134,11 +134,8 @@ export const getDefaultBlockConfig = (type: BlockType) => {
   return parsed.success ? parsed.data : {};
 };
 
-export const parseBlockConfig = (type: BlockType, config: unknown) => {
-  const result = blockSchemas[type].safeParse(config);
-  if (!result.success) return result;
-  return result;
-};
+export const parseBlockConfig = (type: BlockType, config: unknown) =>
+  blockSchemas[type].safeParse(config);
 
 export const getSourceForBlock = (type: BlockType): SourceType | null => {
   if (type.startsWith('github')) return 'github';

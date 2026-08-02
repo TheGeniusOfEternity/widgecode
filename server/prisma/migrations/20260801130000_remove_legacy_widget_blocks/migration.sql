@@ -1,9 +1,5 @@
--- Remove blocks created with the old default layout (two columns by one row).
-DELETE FROM "Block"
-WHERE "config"->'layout'->>'width' = '2'
-  AND "config"->'layout'->>'height' = '1';
-
--- Keep block positions contiguous after the cleanup.
+-- A 2x1 layout is valid in the current editor, so retain all blocks.
+-- Keep block positions contiguous after the legacy layout migration.
 WITH ranked_blocks AS (
     SELECT
         "id",
