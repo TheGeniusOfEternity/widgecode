@@ -12,7 +12,7 @@ type WidgetsGalleryHeaderProps = {
   onCreateWidget: () => void;
 };
 
-const repositoryUrl = 'https://github.com/TheGeniusOfEternity/github-stats';
+const repositoryUrl = 'https://github.com/TheGeniusOfEternity/widgecode';
 
 export const WidgetsGalleryHeader = ({
   eyebrow,

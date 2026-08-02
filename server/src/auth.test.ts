@@ -46,7 +46,7 @@ it('registers a user and sets an httpOnly refresh cookie', async () => {
 
   expect(response.body.user).toEqual(user);
   expect(response.body.accessToken).toEqual(expect.any(String));
-  expect(response.headers['set-cookie'][0]).toContain('github_stats_refresh=');
+  expect(response.headers['set-cookie'][0]).toContain('widgecode_refresh=');
   expect(response.headers['set-cookie'][0]).toContain('HttpOnly');
   expect(prismaMocks.user.create).toHaveBeenCalledWith({
     data: {

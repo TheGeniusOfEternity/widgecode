@@ -181,6 +181,11 @@ export const App = () => {
     }
   }, [authStatus, isBootstrapped, isLoggingOut, route]);
 
+  useEffect(() => {
+    if (!isBootstrapped || authStatus !== 'authenticated' || route !== 'auth') return;
+    window.location.replace('/dashboard');
+  }, [authStatus, isBootstrapped, route]);
+
   const handleLocaleToggle = () => {
     if (isLocaleTransitioning) return;
 
@@ -301,8 +306,14 @@ export const App = () => {
     isBootstrapped &&
     (route === 'dashboard' || route === 'editor') &&
     authStatus === 'unauthenticated';
+  const isRedirectingFromAuthRoute =
+    isBootstrapped && route === 'auth' && authStatus === 'authenticated';
   const isAuthTransitioning =
-    !isBootstrapped || isLoggingOut || route === 'callback' || isRedirectingFromPrivateRoute;
+    !isBootstrapped ||
+    isLoggingOut ||
+    route === 'callback' ||
+    isRedirectingFromPrivateRoute ||
+    isRedirectingFromAuthRoute;
   const oauthError =
     route === 'auth' && new URLSearchParams(window.location.search).has('oauth_error')
       ? locale === 'ru'

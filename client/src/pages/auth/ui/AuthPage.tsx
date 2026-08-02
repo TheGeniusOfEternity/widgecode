@@ -7,6 +7,17 @@ import styles from '@/pages/auth/ui/AuthPage.module.css';
 
 export type AuthTab = 'signin' | 'signup';
 
+const localizeAuthError = (error: string, locale: Locale) => {
+  const t = messages[locale];
+  const knownErrors: Record<string, string> = {
+    'Enter a valid email': t.authInvalidEmail,
+    'Password must contain at least 6 characters': t.authPasswordTooShort,
+    'Invalid email or password': t.authInvalidCredentials,
+    'An account with this email already exists': t.authEmailExists,
+  };
+  return knownErrors[error] ?? error;
+};
+
 type AuthPageProps = {
   authTab: AuthTab;
   locale: Locale;
@@ -91,11 +102,13 @@ export const AuthPage = ({
             onUpdate={setPassword}
             type="password"
           />
-          {error && (
-            <p className={styles.authError} role="alert">
-              {error}
-            </p>
-          )}
+          <div className={styles.authErrorSlot} aria-live="polite">
+            {error && (
+              <p className={styles.authError} role="alert">
+                {localizeAuthError(error, locale)}
+              </p>
+            )}
+          </div>
           <Button view="action" size="xl" width="max" type="submit" loading={isSubmitting}>
             {t.continue}
           </Button>

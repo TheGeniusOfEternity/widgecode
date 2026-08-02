@@ -3,9 +3,16 @@ import styles from '@/shared/ui/auth-transition-loader/AuthTransitionLoader.modu
 type AuthTransitionLoaderProps = {
   locale: 'ru' | 'en';
   reducedMotion: boolean;
+  title?: string;
+  subtitle?: string;
 };
 
-export const AuthTransitionLoader = ({ locale, reducedMotion }: AuthTransitionLoaderProps) => (
+export const AuthTransitionLoader = ({
+  locale,
+  reducedMotion,
+  title,
+  subtitle,
+}: AuthTransitionLoaderProps) => (
   <div
     className={`${styles.loader} ${reducedMotion ? styles.loaderReduced : ''}`}
     role="status"
@@ -20,10 +27,11 @@ export const AuthTransitionLoader = ({ locale, reducedMotion }: AuthTransitionLo
       <span className={styles.loaderCore}>W</span>
     </div>
     <p className={styles.loaderTitle}>
-      {locale === 'ru' ? 'Настраиваем ваше пространство' : 'Preparing your workspace'}
+      {title ?? (locale === 'ru' ? 'Настраиваем ваше пространство' : 'Preparing your workspace')}
     </p>
     <p className={styles.loaderSubtitle}>
-      {locale === 'ru' ? 'Проверяем защищённое соединение' : 'Checking your secure connection'}
+      {subtitle ??
+        (locale === 'ru' ? 'Проверяем защищённое соединение' : 'Checking your secure connection')}
     </p>
     <span className={styles.progressTrack} aria-hidden="true">
       <span className={styles.progressBar} />

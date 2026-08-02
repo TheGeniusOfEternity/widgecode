@@ -90,43 +90,40 @@ const languageColor = (name: string) =>
 const PreviewState = ({
   locale,
   source,
-  loading,
-  username,
 }: {
   locale: WidgetLocale;
   source: 'github' | 'leetcode';
-  loading: boolean;
-  username?: string;
 }) => {
   const sourceLabel = source === 'github' ? 'GitHub' : 'LeetCode';
   return (
-    <div className={`${styles.previewState} ${loading ? styles.previewLoading : ''}`} role="status">
+    <div className={styles.previewState} role="status">
       <span className={styles.previewStateMark} aria-hidden="true">
-        {loading ? '...' : '@'}
+        @
       </span>
       <span className={styles.previewStateCopy}>
-        <strong>
-          {loading
-            ? locale === 'ru'
-              ? 'Обновляем статистику'
-              : 'Updating statistics'
-            : locale === 'ru'
-              ? 'Добавьте username'
-              : 'Add a username'}
-        </strong>
+        <strong>{locale === 'ru' ? 'Добавьте username' : 'Add a username'}</strong>
         <span>
-          {loading
-            ? locale === 'ru'
-              ? `Проверяем профиль ${username}`
-              : `Checking ${username}'s profile`
-            : locale === 'ru'
-              ? `Укажите ${sourceLabel} username в настройках блока`
-              : `Add a ${sourceLabel} username in block settings`}
+          {locale === 'ru'
+            ? `Укажите ${sourceLabel} username в настройках блока`
+            : `Add a ${sourceLabel} username in block settings`}
         </span>
       </span>
     </div>
   );
 };
+
+const WidgetBlockSkeleton = () => (
+  <div className={styles.blockSkeleton} aria-hidden="true">
+    <span className={`${styles.skeletonLine} ${styles.skeletonLineWide}`} />
+    <span className={`${styles.skeletonLine} ${styles.skeletonLineMedium}`} />
+    <span className={`${styles.skeletonLine} ${styles.skeletonLineShort}`} />
+    <div className={styles.skeletonStats}>
+      <span className={styles.skeletonStat} />
+      <span className={styles.skeletonStat} />
+      <span className={styles.skeletonStat} />
+    </div>
+  </div>
+);
 
 const getBlockLayout = (block: WidgetBlock): BlockLayout => {
   const value = block.config.layout;
@@ -180,10 +177,10 @@ export const WidgetBlockContent = ({
       : null;
   const username = typeof block.config.username === 'string' ? block.config.username.trim() : '';
   if (source && rendered?.data === undefined && !username) {
-    return <PreviewState locale={locale} source={source} loading={false} />;
+    return <PreviewState locale={locale} source={source} />;
   }
   if (source && rendered?.data === undefined && !rendered) {
-    return <PreviewState locale={locale} source={source} loading username={username} />;
+    return <WidgetBlockSkeleton />;
   }
   const data = (rendered?.data as BlockData | undefined) ?? (sampleData[block.type] as BlockData);
 
@@ -293,6 +290,44 @@ export const WidgetBlockContent = ({
     </div>
   );
 };
+
+type WidgetCanvasSkeletonProps = {
+  embed?: boolean;
+  locale?: WidgetLocale;
+};
+
+export const WidgetCanvasSkeleton = ({
+  embed = false,
+  locale = 'en',
+}: WidgetCanvasSkeletonProps) => (
+  <div
+    className={`${styles.canvas} ${styles.canvasSkeleton} ${embed ? styles.canvasSkeletonEmbed : ''}`}
+    data-show-chrome={!embed}
+    role="status"
+    aria-label={locale === 'ru' ? 'Загрузка виджета' : 'Loading widget'}
+  >
+    {!embed && (
+      <div className={styles.canvasHeader} aria-hidden="true">
+        <span className={styles.brandDot} />
+        <span className={`${styles.skeletonLine} ${styles.skeletonChromeLabel}`} />
+      </div>
+    )}
+    <div className={styles.blocks} data-columns="1" aria-hidden="true">
+      <article className={`${styles.block} ${styles.skeletonBlock}`}>
+        <WidgetBlockSkeleton />
+      </article>
+      <article className={`${styles.block} ${styles.skeletonBlock}`}>
+        <WidgetBlockSkeleton />
+      </article>
+    </div>
+    {!embed && (
+      <div className={styles.canvasFooter} aria-hidden="true">
+        <span className={`${styles.skeletonLine} ${styles.skeletonFooterLabel}`} />
+        <span className={`${styles.skeletonLine} ${styles.skeletonFooterLabel}`} />
+      </div>
+    )}
+  </div>
+);
 
 export const WidgetCanvas = ({
   blocks,

@@ -41,7 +41,7 @@ const fetchJson = async <T>(
     ...init,
     headers: {
       Accept: 'application/json',
-      'User-Agent': 'github-stats-widget-builder',
+      'User-Agent': 'widgecode-widget-builder',
       ...init?.headers,
     },
   });

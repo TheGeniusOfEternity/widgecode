@@ -26,6 +26,24 @@
   box-shadow: 0 22px 60px color-mix(in srgb, var(--widget-accent) 18%, transparent);
 }
 
+.canvasSkeleton {
+  --widget-accent: var(--action);
+  --widget-soft: var(--glass);
+  --widget-ink: var(--text);
+  --widget-surface: var(--glass-strong);
+  min-height: 340px;
+}
+
+.canvasSkeletonEmbed {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .canvas[data-palette-mode='dark'] {
   --widget-accent: var(--widget-dark-accent);
   --widget-soft: var(--widget-dark-soft);
@@ -103,6 +121,68 @@
     border-color 160ms ease,
     transform 160ms ease,
     box-shadow 160ms ease;
+}
+
+.skeletonBlock {
+  display: grid;
+  align-content: center;
+}
+
+.blockSkeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.skeletonLine,
+.skeletonStat {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--widget-ink) 10%, transparent) 20%,
+    color-mix(in srgb, var(--widget-accent) 28%, transparent) 45%,
+    color-mix(in srgb, var(--widget-ink) 10%, transparent) 70%
+  );
+  background-size: 220% 100%;
+  animation: widget-skeleton-shimmer 1.2s linear infinite;
+}
+
+.skeletonLine {
+  height: 10px;
+}
+
+.skeletonLineWide {
+  width: 68%;
+}
+
+.skeletonLineMedium {
+  width: 46%;
+}
+
+.skeletonLineShort {
+  width: 30%;
+}
+
+.skeletonStats {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.skeletonStat {
+  width: 28%;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.skeletonChromeLabel {
+  width: 126px;
+  height: 9px;
+}
+
+.skeletonFooterLabel {
+  width: 64px;
+  height: 8px;
 }
 
 .block:hover,
@@ -291,19 +371,13 @@
   white-space: nowrap;
 }
 
-.previewLoading .previewStateMark {
-  animation: preview-state-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes preview-state-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(0.94);
+@keyframes widget-skeleton-shimmer {
+  from {
+    background-position: 100% 0;
   }
-  50% {
-    opacity: 1;
-    transform: scale(1);
+
+  to {
+    background-position: -100% 0;
   }
 }
 
@@ -312,6 +386,13 @@
   padding: 42px 16px;
   color: color-mix(in srgb, var(--widget-ink) 60%, transparent);
   text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonLine,
+  .skeletonStat {
+    animation: none;
+  }
 }
 
 @media (max-width: 520px) {

@@ -70,6 +70,71 @@
   opacity: 1;
 }
 
+.previewSkeleton {
+  position: absolute;
+  z-index: 1;
+  inset: 18px;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 22%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--glass-strong) 66%, transparent);
+  pointer-events: none;
+}
+
+.previewSkeleton::before,
+.previewSkeleton::after,
+.previewSkeletonTitle,
+.previewSkeletonSubtitle,
+.previewSkeletonStats span {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--muted) 16%, transparent) 20%,
+    color-mix(in srgb, var(--accent-color) 34%, transparent) 45%,
+    color-mix(in srgb, var(--muted) 16%, transparent) 70%
+  );
+  background-size: 220% 100%;
+  animation: card-skeleton-shimmer 1s linear infinite;
+}
+
+.previewSkeleton::before {
+  width: 58%;
+  height: 11px;
+  content: '';
+}
+
+.previewSkeleton::after {
+  width: 38%;
+  height: 8px;
+  content: '';
+}
+
+.previewSkeletonTitle {
+  width: 46%;
+  height: 8px;
+}
+
+.previewSkeletonSubtitle {
+  width: 30%;
+  height: 7px;
+}
+
+.previewSkeletonStats {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.previewSkeletonStats span {
+  width: 28%;
+  height: 32px;
+  border-radius: 10px;
+}
+
 .preview > span {
   font-size: 34px;
   font-weight: 850;

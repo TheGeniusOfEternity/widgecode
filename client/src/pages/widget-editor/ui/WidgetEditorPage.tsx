@@ -1,5 +1,6 @@
 import { ArrowLeft, Check, Copy, Eye, Grip, Plus, TrashBin } from '@gravity-ui/icons';
 import { Button, Checkbox, Icon, Select, TextArea, TextInput } from '@gravity-ui/uikit';
+import { useReducedMotion } from 'framer-motion';
 import {
   useEffect,
   useEffectEvent,
@@ -35,6 +36,7 @@ import {
   type WidgetBlock,
 } from '@/entities/widget/model';
 import { messages, type Locale } from '@/shared/locale/content';
+import { AuthTransitionLoader } from '@/shared/ui/auth-transition-loader/AuthTransitionLoader';
 import styles from '@/pages/widget-editor/ui/WidgetEditorPage.module.css';
 import canvasStyles from '@/entities/widget/ui/WidgetCanvas.module.css';
 
@@ -308,6 +310,7 @@ export const WidgetEditorPage = ({
   onOpenPublic,
 }: WidgetEditorPageProps) => {
   const t = messages[locale];
+  const prefersReducedMotion = useReducedMotion();
   const [isMobile, setMobile] = useState(() => window.matchMedia('(max-width: 760px)').matches);
   const [widget, setWidget] = useState<Widget | null>(null);
   const widgetRef = useRef<Widget | null>(null);
@@ -323,6 +326,8 @@ export const WidgetEditorPage = ({
   const [previewBlocks, setPreviewBlocks] = useState<Record<string, RenderedBlock>>({});
   const [error, setError] = useState<string | null>(null);
   const savePromiseRef = useRef<Promise<void> | null>(null);
+  const editVersionRef = useRef(0);
+  const isDirtyRef = useRef(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     blockId: string;
@@ -349,7 +354,10 @@ export const WidgetEditorPage = ({
         setWidget(normalized.widget);
         widgetRef.current = normalized.widget;
         setSelectedBlockId(normalized.widget.blocks[0]?.id ?? null);
-        setDirty(Boolean(cachedWidget) || normalized.changed);
+        const nextIsDirty = Boolean(cachedWidget) || normalized.changed;
+        editVersionRef.current = 0;
+        isDirtyRef.current = nextIsDirty;
+        setDirty(nextIsDirty);
       })
       .catch((loadError) => {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : t.unavailable);
@@ -364,6 +372,7 @@ export const WidgetEditorPage = ({
 
   useEffect(() => {
     widgetRef.current = widget;
+    isDirtyRef.current = isDirty;
     if (widget && isDirty) writeCachedWidget(widget);
   }, [isDirty, widget]);
 
@@ -441,6 +450,8 @@ export const WidgetEditorPage = ({
     const sizedWidget = { ...nextWidget, ...getWidgetDimensions(nextWidget.blocks) };
     widgetRef.current = sizedWidget;
     setWidget(sizedWidget);
+    editVersionRef.current += 1;
+    isDirtyRef.current = true;
     setDirty(true);
   };
 
@@ -643,11 +654,14 @@ export const WidgetEditorPage = ({
   const handleSave = (publish = false): Promise<void> => {
     if (savePromiseRef.current) {
       const pending = savePromiseRef.current;
-      return pending.then(() => (publish ? handleSave(true) : undefined));
+      return pending.then(() => {
+        if (publish || isDirtyRef.current) return handleSave(publish);
+      });
     }
     const run = (async () => {
       const current = widgetRef.current;
       if (!current) return;
+      const saveVersion = editVersionRef.current;
       setSaving(true);
       setError(null);
       try {
@@ -661,10 +675,16 @@ export const WidgetEditorPage = ({
           config: current.config,
         });
         const normalized = normalizeWidget(saved).widget;
-        widgetRef.current = normalized;
-        setWidget(normalized);
-        setDirty(false);
-        clearCachedWidget(current.id);
+        if (editVersionRef.current === saveVersion) {
+          widgetRef.current = normalized;
+          setWidget(normalized);
+          isDirtyRef.current = false;
+          setDirty(false);
+          clearCachedWidget(current.id);
+        } else {
+          isDirtyRef.current = true;
+          setDirty(true);
+        }
       } catch (saveError) {
         setError(saveError instanceof Error ? saveError.message : t.unavailable);
       } finally {
@@ -683,7 +703,7 @@ export const WidgetEditorPage = ({
 
   useEffect(() => {
     if (!widget || !isDirty) return;
-    const timeout = window.setTimeout(triggerAutosave, 850);
+    const timeout = window.setTimeout(triggerAutosave, 1500);
     return () => window.clearTimeout(timeout);
   }, [isDirty, widget?.id, widget]);
 
@@ -739,7 +759,17 @@ export const WidgetEditorPage = ({
         </div>
       </main>
     );
-  if (isLoading) return <div className={styles.status}>{t.loading}</div>;
+  if (isLoading)
+    return (
+      <div className={styles.status}>
+        <AuthTransitionLoader
+          locale={locale}
+          reducedMotion={Boolean(prefersReducedMotion)}
+          title={t.loadingWidget}
+          subtitle={t.loadingWidgetSubtitle}
+        />
+      </div>
+    );
   if (!widget)
     return (
       <div className={styles.status} role="alert">

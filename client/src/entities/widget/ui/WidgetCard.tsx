@@ -62,6 +62,17 @@ const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
       className={`${styles.previewFrameViewport} ${isLoaded ? styles.previewFrameViewportLoaded : ''}`}
       aria-busy={!isLoaded}
     >
+      {!isLoaded && (
+        <div className={styles.previewSkeleton} aria-hidden="true">
+          <span className={styles.previewSkeletonTitle} />
+          <span className={styles.previewSkeletonSubtitle} />
+          <div className={styles.previewSkeletonStats}>
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+      )}
       <iframe
         className={`${styles.previewFrame} ${isLoaded ? styles.previewFrameLoaded : ''}`}
         src={getPublicWidgetUrl(widget.slug, true)}

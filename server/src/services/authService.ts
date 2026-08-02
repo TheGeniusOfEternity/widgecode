@@ -12,8 +12,8 @@ import {
 } from '@server/lib/jwt.js';
 import { authModel, type PublicUser } from '@server/models/authModel.js';
 
-export const REFRESH_COOKIE_NAME = 'github_stats_refresh';
-export const OAUTH_STATE_COOKIE_NAME = 'github_stats_oauth_state';
+export const REFRESH_COOKIE_NAME = 'widgecode_refresh';
+export const OAUTH_STATE_COOKIE_NAME = 'widgecode_oauth_state';
 
 export type AuthResult = {
   accessToken: string;

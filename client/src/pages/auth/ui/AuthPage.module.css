@@ -205,8 +205,14 @@
   background: var(--line);
 }
 
+.authErrorSlot {
+  display: flex;
+  min-height: 36px;
+  align-items: flex-start;
+}
+
 .authError {
-  margin: -8px 0 -4px;
+  margin: 0;
   color: var(--danger, #d93025);
   font-size: 13px;
   line-height: 1.4;

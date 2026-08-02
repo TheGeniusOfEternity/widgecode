@@ -1,11 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useReducedMotion } from 'framer-motion';
 
-import { WidgetCanvas, type PublicWidgetResponse } from '@/entities/widget';
+import { WidgetCanvas, WidgetCanvasSkeleton, type PublicWidgetResponse } from '@/entities/widget';
 import { getPublicWidget } from '@/shared/api';
 import type { Locale } from '@/shared/locale/content';
 import { messages } from '@/shared/locale/content';
-import { AuthTransitionLoader } from '@/shared/ui/auth-transition-loader/AuthTransitionLoader';
 import styles from '@/pages/public-widget/ui/PublicWidgetPage.module.css';
 
 type PublicWidgetPageProps = {
@@ -16,7 +14,6 @@ type PublicWidgetPageProps = {
 
 export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPageProps) => {
   const t = messages[locale];
-  const prefersReducedMotion = useReducedMotion();
   const [payload, setPayload] = useState<PublicWidgetResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,8 +39,8 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
     );
   if (!payload)
     return (
-      <div className={styles.status}>
-        <AuthTransitionLoader locale={locale} reducedMotion={Boolean(prefersReducedMotion)} />
+      <div className={`${styles.status} ${embed ? styles.embedStatus : ''}`}>
+        <WidgetCanvasSkeleton embed={embed} locale={locale} />
       </div>
     );
 
