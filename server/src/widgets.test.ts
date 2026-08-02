@@ -125,6 +125,29 @@ it('creates a new block as a single-column item', async () => {
   );
 });
 
+it('previews a block without publishing the widget', async () => {
+  const { agent, token } = await authenticatedAgent();
+  prismaMocks.widget.findFirst.mockResolvedValue({
+    id: widget.id,
+    userId: user.id,
+    config: { grid: { columns: 2 }, palette: 'lavender', renderFormat: 'iframe' },
+    blocks: [],
+  });
+
+  const response = await agent
+    .post(`/api/widgets/${widget.id}/preview`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ id: 'preview-block', type: 'github-stats', config: {} })
+    .expect(200);
+
+  expect(response.body.block).toEqual(
+    expect.objectContaining({
+      id: 'preview-block',
+      error: 'Add a github username to this widget',
+    }),
+  );
+});
+
 it('does not expose another user widget through protected routes', async () => {
   const { agent, token } = await authenticatedAgent();
   prismaMocks.widget.findFirst.mockResolvedValue(null);

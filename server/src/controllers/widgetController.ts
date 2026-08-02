@@ -39,6 +39,12 @@ const addBlockSchema = z.object({
   config: z.unknown().optional(),
 });
 
+const previewBlockSchema = z.object({
+  id: widgetIdSchema,
+  type: blockTypeSchema,
+  config: z.record(z.string(), z.unknown()).default({}),
+});
+
 const updateBlockSchema = z.object({ config: z.unknown().optional() });
 
 const layoutUpdateSchema = z.object({
@@ -161,6 +167,23 @@ export class WidgetController {
         input.columns,
       );
       res.json({ widget });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  preview = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const input = parse(previewBlockSchema, req.body);
+      const widget = await widgetService.get(
+        userId(req),
+        parse(widgetIdSchema, req.params.widgetId),
+      );
+      const rendered = await renderWidgetStats({
+        config: widget.config,
+        blocks: [{ id: input.id, type: input.type, position: 0, config: input.config }],
+      });
+      res.json({ block: rendered.blocks[0] });
     } catch (error) {
       next(error);
     }

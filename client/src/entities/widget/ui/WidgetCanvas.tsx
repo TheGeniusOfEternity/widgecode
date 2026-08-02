@@ -22,7 +22,10 @@ type WidgetCanvasProps = {
   interactive?: boolean;
   selectedBlockId?: string;
   onSelectBlock?: (id: string) => void;
+  locale?: 'ru' | 'en';
 };
+
+type WidgetLocale = 'ru' | 'en';
 
 const sampleData: Record<BlockType, Record<string, unknown>> = {
   text: { text: 'Build something worth sharing.', align: 'left' },
@@ -51,6 +54,78 @@ const sampleData: Record<BlockType, Record<string, unknown>> = {
 
 const renderedData = (block: WidgetBlock, renderedBlocks?: RenderedBlock[]) =>
   renderedBlocks?.find((rendered) => rendered.id === block.id);
+
+const githubLanguageColors: Record<string, string> = {
+  assembly: '#6e4c13',
+  c: '#555555',
+  'c#': '#178600',
+  'c++': '#f34b7d',
+  css: '#663399',
+  dart: '#00b4ab',
+  go: '#00add8',
+  html: '#e34c26',
+  java: '#b07219',
+  javascript: '#f1e05a',
+  kotlin: '#a97bff',
+  lua: '#000080',
+  'objective-c': '#438eff',
+  perl: '#0298c3',
+  php: '#4f5d95',
+  python: '#3572a5',
+  r: '#198ce7',
+  ruby: '#701516',
+  rust: '#dea584',
+  scala: '#c22d40',
+  shell: '#89e051',
+  svelte: '#ff3e00',
+  swift: '#f05138',
+  typescript: '#3178c6',
+  vue: '#41b883',
+};
+
+const languageColor = (name: string) =>
+  githubLanguageColors[name.trim().toLowerCase()] ?? '#8b949e';
+
+const PreviewState = ({
+  locale,
+  source,
+  loading,
+  username,
+}: {
+  locale: WidgetLocale;
+  source: 'github' | 'leetcode';
+  loading: boolean;
+  username?: string;
+}) => {
+  const sourceLabel = source === 'github' ? 'GitHub' : 'LeetCode';
+  return (
+    <div className={`${styles.previewState} ${loading ? styles.previewLoading : ''}`} role="status">
+      <span className={styles.previewStateMark} aria-hidden="true">
+        {loading ? '...' : '@'}
+      </span>
+      <span className={styles.previewStateCopy}>
+        <strong>
+          {loading
+            ? locale === 'ru'
+              ? 'Обновляем статистику'
+              : 'Updating statistics'
+            : locale === 'ru'
+              ? 'Добавьте username'
+              : 'Add a username'}
+        </strong>
+        <span>
+          {loading
+            ? locale === 'ru'
+              ? `Проверяем профиль ${username}`
+              : `Checking ${username}'s profile`
+            : locale === 'ru'
+              ? `Укажите ${sourceLabel} username в настройках блока`
+              : `Add a ${sourceLabel} username in block settings`}
+        </span>
+      </span>
+    </div>
+  );
+};
 
 const getBlockLayout = (block: WidgetBlock): BlockLayout => {
   const value = block.config.layout;
@@ -90,11 +165,25 @@ const Stat = ({ label, value }: { label: string; value: string | number }) => (
 export const WidgetBlockContent = ({
   block,
   rendered,
+  locale = 'en',
 }: {
   block: WidgetBlock;
   rendered?: RenderedBlock;
+  locale?: WidgetLocale;
 }) => {
   if (rendered?.error) return <p className={styles.error}>{rendered.error}</p>;
+  const source = block.type.startsWith('github')
+    ? 'github'
+    : block.type.startsWith('leetcode')
+      ? 'leetcode'
+      : null;
+  const username = typeof block.config.username === 'string' ? block.config.username.trim() : '';
+  if (source && rendered?.data === undefined && !username) {
+    return <PreviewState locale={locale} source={source} loading={false} />;
+  }
+  if (source && rendered?.data === undefined && !rendered) {
+    return <PreviewState locale={locale} source={source} loading username={username} />;
+  }
   const data = (rendered?.data as BlockData | undefined) ?? (sampleData[block.type] as BlockData);
 
   if (block.type === 'text') {
@@ -113,10 +202,8 @@ export const WidgetBlockContent = ({
     return (
       <div className={styles.statsBlock}>
         <div className={styles.blockHeading}>
-          <div className={styles.avatar}>
-            {String(data.name || data.username || 'G')
-              .slice(0, 1)
-              .toUpperCase()}
+          <div className={styles.avatar} aria-hidden="true">
+            {data.avatarUrl && <img src={data.avatarUrl} alt="" />}
           </div>
           <div>
             <strong>{String(data.name || 'GitHub profile')}</strong>
@@ -147,22 +234,35 @@ export const WidgetBlockContent = ({
           <span>top {languages.length || 4}</span>
         </div>
         <div className={styles.languageBar}>
-          {languages.map((language) => (
-            <span key={language.name} style={{ flexBasis: `${language.percentage}%` }} />
-          ))}
+          {languages.map((language) => {
+            const color = languageColor(language.name);
+            return (
+              <span
+                key={language.name}
+                style={{
+                  flex: `${Math.max(language.percentage, 0)} 0 0%`,
+                  background: color,
+                }}
+              />
+            );
+          })}
         </div>
         <div className={styles.languageList}>
-          {languages.map((language) => (
-            <span key={language.name}>
-              <i /> {language.name} <b>{language.percentage}%</b>
-            </span>
-          ))}
+          {languages.map((language) => {
+            const color = languageColor(language.name);
+            return (
+              <span key={language.name}>
+                <i style={{ background: color }} /> {language.name} <b>{language.percentage}%</b>
+              </span>
+            );
+          })}
         </div>
       </div>
     );
   }
 
   const solved = data.solved;
+  const hasLiveData = rendered?.data !== undefined;
   return (
     <div className={styles.statsBlock}>
       <div className={styles.blockTitleRow}>
@@ -170,12 +270,12 @@ export const WidgetBlockContent = ({
         <span>@{String(data.username || 'username')}</span>
       </div>
       <div className={styles.statsRow}>
-        <Stat label="Solved" value={solved?.all ?? 312} />
+        <Stat label="Solved" value={solved?.all ?? (hasLiveData ? 0 : 312)} />
         {block.config.showRanking !== false && (
-          <Stat label="Ranking" value={data.ranking ?? 18_240} />
+          <Stat label="Ranking" value={data.ranking ?? (hasLiveData ? '—' : 18_240)} />
         )}
         {block.config.showContestRating !== false && (
-          <Stat label="Rating" value={data.contestRating ?? 1_726} />
+          <Stat label="Rating" value={data.contestRating ?? (hasLiveData ? '—' : 1_726)} />
         )}
       </div>
       <div className={styles.difficultyRow}>
@@ -204,6 +304,7 @@ export const WidgetCanvas = ({
   interactive = false,
   selectedBlockId,
   onSelectBlock,
+  locale = 'en',
 }: WidgetCanvasProps) => {
   const tokens = paletteTokens[palette];
   const style = {
@@ -246,7 +347,11 @@ export const WidgetCanvas = ({
             }}
             onClick={(event) => handleSelect(event, block.id)}
           >
-            <WidgetBlockContent block={block} rendered={renderedData(block, renderedBlocks)} />
+            <WidgetBlockContent
+              block={block}
+              rendered={renderedData(block, renderedBlocks)}
+              locale={locale}
+            />
           </article>
         ))}
       </div>

@@ -3,6 +3,7 @@ import type {
   BlockType,
   BlockLayout,
   PublicWidgetResponse,
+  RenderedBlock,
   SourceType,
   Widget,
   WidgetBlock,
@@ -69,6 +70,17 @@ export const updateBlock = async (id: string, config: Record<string, unknown>) =
   const response = await apiClient<{ block: WidgetBlock }>(`/blocks/${id}`, {
     method: 'PUT',
     body: JSON.stringify({ config }),
+  });
+  return response.block;
+};
+
+export const previewWidgetBlock = async (
+  widgetId: string,
+  block: Pick<WidgetBlock, 'id' | 'type' | 'config'>,
+) => {
+  const response = await apiClient<{ block: RenderedBlock }>(`/widgets/${widgetId}/preview`, {
+    method: 'POST',
+    body: JSON.stringify(block),
   });
   return response.block;
 };

@@ -123,6 +123,12 @@
   padding: 0;
 }
 
+@media (max-width: 760px) {
+  .configureAction {
+    display: none;
+  }
+}
+
 .modalContent {
   display: grid;
   gap: 16px;

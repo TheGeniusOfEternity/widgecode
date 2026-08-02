@@ -85,6 +85,7 @@ export const PublicWidgetPage = ({ slug, locale }: PublicWidgetPageProps) => {
         width={widget.width}
         height={widget.height}
         renderedBlocks={rendered.blocks}
+        locale={locale}
       />
       <footer className={styles.publicFooter}>
         /{widget.slug} · cached {Math.round(rendered.cacheTtlSeconds / 60)} min

@@ -8,12 +8,14 @@ import {
   type CSSProperties,
   type PointerEvent,
 } from 'react';
+import { flushSync } from 'react-dom';
 
 import { WidgetBlockContent } from '@/entities/widget';
 import {
   addBlock,
   deleteBlock,
   getWidget,
+  previewWidgetBlock,
   updateBlock,
   updateBlockLayouts,
   updateWidget,
@@ -26,6 +28,7 @@ import {
   type BlockLayout,
   type BlockType,
   type PaletteMode,
+  type RenderedBlock,
   type SourceType,
   type Widget,
   type WidgetBlock,
@@ -204,6 +207,8 @@ const EditorBlock = ({
   onPointerCancel,
   onResize,
   dragging,
+  rendered,
+  locale,
 }: {
   block: WidgetBlock;
   selected: boolean;
@@ -216,6 +221,8 @@ const EditorBlock = ({
   onPointerCancel: () => void;
   onResize: (width: number, height: number) => void;
   dragging: boolean;
+  rendered?: RenderedBlock;
+  locale: Locale;
 }) => {
   const layout = getLayout(block);
   return (
@@ -257,7 +264,7 @@ const EditorBlock = ({
           </button>
         ))}
       </div>
-      <WidgetBlockContent block={block} />
+      <WidgetBlockContent block={block} rendered={rendered} locale={locale} />
       <button
         className={styles.removeBlock}
         type="button"
@@ -280,6 +287,7 @@ export const WidgetEditorPage = ({
   onOpenPublic,
 }: WidgetEditorPageProps) => {
   const t = messages[locale];
+  const [isMobile, setMobile] = useState(() => window.matchMedia('(max-width: 760px)').matches);
   const [widget, setWidget] = useState<Widget | null>(null);
   const widgetRef = useRef<Widget | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -291,6 +299,7 @@ export const WidgetEditorPage = ({
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
   const [dropCell, setDropCell] = useState<{ x: number; y: number } | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
+  const [previewBlocks, setPreviewBlocks] = useState<Record<string, RenderedBlock>>({});
   const [error, setError] = useState<string | null>(null);
   const savePromiseRef = useRef<Promise<void> | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -301,6 +310,15 @@ export const WidgetEditorPage = ({
   } | null>(null);
 
   useEffect(() => {
+    const media = window.matchMedia('(max-width: 760px)');
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) return;
     let cancelled = false;
     void getWidget(widgetId)
       .then((serverWidget) => {
@@ -321,7 +339,7 @@ export const WidgetEditorPage = ({
     return () => {
       cancelled = true;
     };
-  }, [t.unavailable, widgetId]);
+  }, [isMobile, t.unavailable, widgetId]);
 
   useEffect(() => {
     widgetRef.current = widget;
@@ -338,6 +356,63 @@ export const WidgetEditorPage = ({
     return () => observer.disconnect();
   }, [widget?.id, widget?.blocks.length]);
 
+  const previewSignature =
+    widget?.blocks
+      .map((block) =>
+        JSON.stringify({
+          id: block.id,
+          type: block.type,
+          username: block.config.username,
+          limit: block.config.limit,
+        }),
+      )
+      .join('|') ?? '';
+
+  useEffect(() => {
+    const currentWidget = widgetRef.current;
+    if (!currentWidget) return;
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      const previewable = currentWidget.blocks.filter((block) => {
+        const hasSource = sourceForBlock(block.type) !== null;
+        const username =
+          typeof block.config.username === 'string' ? block.config.username.trim() : '';
+        return hasSource && Boolean(username);
+      });
+
+      if (previewable.length === 0) {
+        setPreviewBlocks({});
+        return;
+      }
+
+      void Promise.all(
+        previewable.map(async (block) => {
+          try {
+            return [block.id, await previewWidgetBlock(currentWidget.id, block)] as const;
+          } catch (previewError) {
+            return [
+              block.id,
+              {
+                id: block.id,
+                type: block.type,
+                position: block.position,
+                error: previewError instanceof Error ? previewError.message : t.unavailable,
+              },
+            ] as const;
+          }
+        }),
+      ).then((results) => {
+        if (cancelled) return;
+        setPreviewBlocks(Object.fromEntries(results));
+      });
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [previewSignature, t.unavailable, widget?.id]);
+
   const updateLocalWidget = (updater: (current: Widget) => Widget) => {
     const current = widgetRef.current;
     if (!current) return;
@@ -345,6 +420,39 @@ export const WidgetEditorPage = ({
     widgetRef.current = nextWidget;
     setWidget(nextWidget);
     setDirty(true);
+  };
+
+  const updateLocalWidgetWithResizeAnimation = (
+    blockId: string,
+    updater: (current: Widget) => Widget,
+  ) => {
+    const blockElement = Array.from(
+      gridRef.current?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [],
+    ).find((element) => element.dataset.blockId === blockId);
+    const first = blockElement?.getBoundingClientRect();
+    flushSync(() => updateLocalWidget(updater));
+    if (
+      !blockElement ||
+      !first ||
+      !blockElement.animate ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      const last = blockElement.getBoundingClientRect();
+      if (!last.width || !last.height) return;
+      blockElement.animate(
+        [
+          {
+            transform: `translate(${first.left - last.left}px, ${first.top - last.top}px) scale(${first.width / last.width}, ${first.height / last.height})`,
+            transformOrigin: 'top left',
+          },
+          { transform: 'translate(0, 0) scale(1, 1)', transformOrigin: 'top left' },
+        ],
+        { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      );
+    });
   };
 
   const selectedBlock = widget?.blocks.find((block) => block.id === selectedBlockId) ?? null;
@@ -441,7 +549,7 @@ export const WidgetEditorPage = ({
     const layout = getLayout(block);
     const nextLayout = findPlacement(current, blockId, width, height, layout.x, layout.y);
     if (!nextLayout) return;
-    updateLocalWidget((widget) => ({
+    updateLocalWidgetWithResizeAnimation(blockId, (widget) => ({
       ...widget,
       config: { ...widget.config, grid: { columns: MAX_COLUMNS } },
       blocks: widget.blocks.map((item) =>
@@ -590,6 +698,25 @@ export const WidgetEditorPage = ({
     onBack();
   };
 
+  if (isMobile)
+    return (
+      <main className={styles.mobileFallback} role="note">
+        <div className={styles.mobileFallbackCard}>
+          <span className={styles.mobileFallbackMark}>W</span>
+          <p>{locale === 'ru' ? 'Конструктор доступен на desktop' : 'Desktop editor only'}</p>
+          <h1>
+            {locale === 'ru'
+              ? 'Откройте этот экран на компьютере'
+              : 'Open this editor on a desktop device'}
+          </h1>
+          <span>
+            {locale === 'ru'
+              ? 'На большом экране удобнее настраивать сетку, размеры и данные блоков.'
+              : 'The grid, block sizes, and live data controls are optimized for a larger screen.'}
+          </span>
+        </div>
+      </main>
+    );
   if (isLoading) return <div className={styles.status}>{t.loading}</div>;
   if (!widget)
     return (
@@ -747,6 +874,8 @@ export const WidgetEditorPage = ({
                       onPointerCancel={handleBlockPointerCancel}
                       onResize={(width, height) => handleResizeBlock(block.id, width, height)}
                       dragging={draggingBlockId === block.id}
+                      rendered={previewBlocks[block.id]}
+                      locale={locale}
                     />
                   ))}
                 </div>

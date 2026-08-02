@@ -20,7 +20,11 @@ const getCached = async <T>(key: string, loader: () => Promise<T>) => {
   return value;
 };
 
-const fetchJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
+const fetchJson = async <T>(
+  url: string,
+  init?: RequestInit,
+  rateLimitMessage?: string,
+): Promise<T> => {
   const response = await fetch(url, {
     ...init,
     headers: {
@@ -31,6 +35,13 @@ const fetchJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
   });
 
   if (!response.ok) {
+    if (
+      rateLimitMessage &&
+      response.status === 403 &&
+      response.headers.get('x-ratelimit-remaining') === '0'
+    ) {
+      throw new AppError(502, rateLimitMessage);
+    }
     throw new AppError(502, `External API returned ${response.status}`);
   }
 
@@ -53,15 +64,32 @@ type GithubRepository = {
   fork: boolean;
 };
 
+const githubHeaders = () => {
+  const token = process.env.GITHUB_TOKEN?.trim();
+  return {
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+const githubRateLimitMessage =
+  'GitHub API rate limit exceeded. Configure GITHUB_TOKEN for live widget previews.';
+
 const githubProfile = (username: string) =>
   getCached(`github:${username}:profile`, () =>
-    fetchJson<GithubProfile>(`https://api.github.com/users/${encodeURIComponent(username)}`),
+    fetchJson<GithubProfile>(
+      `https://api.github.com/users/${encodeURIComponent(username)}`,
+      { headers: githubHeaders() },
+      githubRateLimitMessage,
+    ),
   );
 
 const githubRepositories = (username: string) =>
   getCached(`github:${username}:repositories`, () =>
     fetchJson<GithubRepository[]>(
       `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated&type=owner`,
+      { headers: githubHeaders() },
+      githubRateLimitMessage,
     ),
   );
 
@@ -114,7 +142,6 @@ type LeetcodeResponse = {
       submitStatsGlobal?: {
         acSubmissionNum?: { difficulty: string; count: number }[];
       } | null;
-      userContestRanking?: { rating?: number | null; globalRanking?: number | null } | null;
     } | null;
   };
 };
@@ -126,7 +153,6 @@ const getLeetcodeStats = async (username: string) => {
         username
         profile { ranking reputation starRating }
         submitStatsGlobal { acSubmissionNum { difficulty count } }
-        userContestRanking { rating globalRanking }
       }
     }
   `;
@@ -148,8 +174,8 @@ const getLeetcodeStats = async (username: string) => {
   );
   return {
     username: matchedUser.username,
-    ranking: matchedUser.profile?.ranking ?? matchedUser.userContestRanking?.globalRanking ?? null,
-    contestRating: matchedUser.userContestRanking?.rating ?? null,
+    ranking: matchedUser.profile?.ranking ?? null,
+    contestRating: null,
     reputation: matchedUser.profile?.reputation ?? null,
     solved: {
       all: solved.all ?? 0,

@@ -13,6 +13,7 @@ export {
   getPublicWidget,
   getWidget,
   listWidgets,
+  previewWidgetBlock,
   updateBlockLayouts,
   updateBlock,
   updateWidget,

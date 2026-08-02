@@ -120,11 +120,17 @@
   width: 42px;
   height: 42px;
   place-items: center;
+  overflow: hidden;
   border-radius: 14px;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
-  background: var(--widget-accent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--widget-accent) 70%, transparent), transparent),
+    color-mix(in srgb, var(--widget-accent) 22%, var(--widget-surface));
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .statsBlock,
@@ -151,6 +157,7 @@
 
 .languageBar {
   display: flex;
+  align-items: stretch;
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
@@ -158,17 +165,10 @@
 }
 
 .languageBar span {
+  display: block;
+  min-width: 0;
+  height: 100%;
   background: var(--widget-accent);
-}
-
-.languageBar span:nth-child(2) {
-  opacity: 0.72;
-}
-.languageBar span:nth-child(3) {
-  opacity: 0.48;
-}
-.languageBar span:nth-child(4) {
-  opacity: 0.27;
 }
 
 .languageList {
@@ -224,6 +224,66 @@
   color: #a54352;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.previewState {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed color-mix(in srgb, var(--widget-accent) 30%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--widget-accent) 7%, transparent);
+}
+
+.previewStateMark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--widget-accent);
+  border: 1px solid color-mix(in srgb, var(--widget-accent) 34%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--widget-accent) 12%, transparent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.previewStateCopy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.previewStateCopy strong {
+  font-size: 13px;
+}
+
+.previewStateCopy span {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--widget-ink) 62%, transparent);
+  font-size: 11px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewLoading .previewStateMark {
+  animation: preview-state-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes preview-state-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .empty {

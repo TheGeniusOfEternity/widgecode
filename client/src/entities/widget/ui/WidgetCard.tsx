@@ -76,6 +76,7 @@ export const WidgetCard = ({
           <div className={styles.actions}>
             <Button
               view="outlined"
+              className={styles.configureAction}
               onClick={() => onConfigure(widget.id)}
               aria-label={labels.configure}
             >

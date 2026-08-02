@@ -14,6 +14,7 @@ router.put('/:id', widgetController.update);
 router.delete('/:id', widgetController.remove);
 router.post('/:widgetId/blocks', widgetController.addBlock);
 router.put('/:widgetId/blocks/reorder', widgetController.reorderBlocks);
+router.post('/:widgetId/preview', widgetController.preview);
 
 export { router as widgetsRouter };
 
