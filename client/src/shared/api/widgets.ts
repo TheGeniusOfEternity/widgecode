@@ -103,3 +103,6 @@ export const getPublicWidget = async (slug: string) =>
   apiClient<PublicWidgetResponse>(`/public/widgets/${encodeURIComponent(slug)}`, {
     skipAuthRefresh: true,
   });
+
+export const getPublicWidgetUrl = (slug: string, embed = false) =>
+  `${window.location.origin}/w/${encodeURIComponent(slug)}${embed ? '?embed=1' : ''}`;

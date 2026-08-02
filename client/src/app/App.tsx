@@ -12,6 +12,7 @@ import { WidgetEditorPage } from '@/pages/widget-editor';
 import {
   createWidget,
   deleteWidget,
+  getPublicWidgetUrl,
   listWidgets,
   API_BASE_URL,
   type CreateWidgetInput,
@@ -114,6 +115,10 @@ export const App = () => {
 
     const bootstrap = async () => {
       const oauthToken = getOAuthToken();
+      if (getRoute() === 'public') {
+        setBootstrapped(true);
+        return;
+      }
       try {
         if (oauthToken) {
           await useAuthStore.getState().completeOAuth(oauthToken);
@@ -249,8 +254,8 @@ export const App = () => {
   };
 
   const handleCopyWidget = async (widget: WidgetCardData) => {
-    const src = `${window.location.origin}/w/${widget.slug}`;
-    const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" loading="lazy"></iframe>`;
+    const src = getPublicWidgetUrl(widget.slug, true);
+    const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
     await navigator.clipboard?.writeText(code);
   };
 
@@ -264,6 +269,20 @@ export const App = () => {
   }, [locale]);
 
   const isAuthorized = authStatus === 'authenticated';
+  const isEmbedRoute =
+    route === 'public' && new URLSearchParams(window.location.search).get('embed') === '1';
+
+  useEffect(() => {
+    document.documentElement.dataset.embed = isEmbedRoute ? 'true' : 'false';
+    document.body.dataset.embed = isEmbedRoute ? 'true' : 'false';
+  }, [isEmbedRoute]);
+
+  if (isEmbedRoute)
+    return (
+      <ThemeProvider theme={theme}>
+        <PublicWidgetPage slug={getRouteParam('/w/') ?? ''} locale={locale} embed />
+      </ThemeProvider>
+    );
   const isRedirectingFromPrivateRoute =
     isBootstrapped &&
     (route === 'dashboard' || route === 'editor') &&
@@ -291,6 +310,9 @@ export const App = () => {
         onThemeToggle={handleThemeToggle}
         onCreateWidget={handleCreateWidget}
         onOpenWidget={(id) => navigate(`/widgets/${id}`)}
+        onOpenPreview={(widget) =>
+          navigate(widget.public ? `/w/${widget.slug}` : `/widgets/${widget.id}`)
+        }
         onCopyWidget={handleCopyWidget}
         onLogout={handleLogout}
         onDeleteWidget={(id) => void handleDeleteWidget(id)}
@@ -359,7 +381,11 @@ export const App = () => {
                     onYandexAuth={() => window.location.assign(`${API_BASE_URL}/auth/yandex`)}
                   />
                 ) : route === 'public' ? (
-                  <PublicWidgetPage slug={getRouteParam('/w/') ?? ''} locale={locale} />
+                  <PublicWidgetPage
+                    slug={getRouteParam('/w/') ?? ''}
+                    locale={locale}
+                    embed={isEmbedRoute}
+                  />
                 ) : (
                   <LandingPage
                     locale={locale}

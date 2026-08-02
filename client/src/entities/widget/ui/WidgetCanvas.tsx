@@ -23,6 +23,7 @@ type WidgetCanvasProps = {
   selectedBlockId?: string;
   onSelectBlock?: (id: string) => void;
   locale?: 'ru' | 'en';
+  showChrome?: boolean;
 };
 
 type WidgetLocale = 'ru' | 'en';
@@ -305,6 +306,7 @@ export const WidgetCanvas = ({
   selectedBlockId,
   onSelectBlock,
   locale = 'en',
+  showChrome = true,
 }: WidgetCanvasProps) => {
   const tokens = paletteTokens[palette];
   const gridColumns = Math.max(1, Math.min(columns, 2));
@@ -329,11 +331,18 @@ export const WidgetCanvas = ({
   };
 
   return (
-    <div className={styles.canvas} style={style} data-palette-mode={paletteMode}>
-      <div className={styles.canvasHeader}>
-        <span className={styles.brandDot} />
-        <span>live widget preview</span>
-      </div>
+    <div
+      className={styles.canvas}
+      style={style}
+      data-palette-mode={paletteMode}
+      data-show-chrome={showChrome}
+    >
+      {showChrome && (
+        <div className={styles.canvasHeader}>
+          <span className={styles.brandDot} />
+          <span>live widget preview</span>
+        </div>
+      )}
       <div className={styles.blocks} data-columns={gridColumns}>
         {blocks.length === 0 && (
           <p className={styles.empty}>Add a block to start shaping your widget.</p>
@@ -356,12 +365,14 @@ export const WidgetCanvas = ({
           </article>
         ))}
       </div>
-      <div className={styles.canvasFooter}>
-        <span>
-          {blocks.length} block{blocks.length === 1 ? '' : 's'}
-        </span>
-        <span>updates every 15 min</span>
-      </div>
+      {showChrome && (
+        <div className={styles.canvasFooter}>
+          <span>
+            {blocks.length} block{blocks.length === 1 ? '' : 's'}
+          </span>
+          <span>updates every 15 min</span>
+        </div>
+      )}
     </div>
   );
 };

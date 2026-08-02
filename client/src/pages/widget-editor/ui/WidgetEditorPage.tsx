@@ -15,6 +15,7 @@ import {
   addBlock,
   deleteBlock,
   getWidget,
+  getPublicWidgetUrl,
   previewWidgetBlock,
   updateBlock,
   updateBlockLayouts,
@@ -687,8 +688,8 @@ export const WidgetEditorPage = ({
 
   const copyEmbed = async () => {
     if (!widget || !widget.public) return;
-    const src = `${window.location.origin}/w/${widget.slug}`;
-    const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" loading="lazy"></iframe>`;
+    const src = getPublicWidgetUrl(widget.slug, true);
+    const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
     await navigator.clipboard?.writeText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);

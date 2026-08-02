@@ -16,10 +16,12 @@
 }
 
 .widgetGalleryGrid {
+  height: 100%;
   min-height: 0;
-  overflow-x: hidden;
+  overflow: auto;
   padding-bottom: 2px;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: calc(50% - 9px);
 }
 
 .emptyState {
@@ -75,18 +77,14 @@
 
   .widgetGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: max-content;
     align-content: start;
-    align-items: start;
   }
 }
 
 @media (max-width: 720px) {
   .widgetGrid {
     grid-template-columns: 1fr;
-    grid-auto-rows: max-content;
     align-content: start;
-    align-items: start;
   }
 }
 

@@ -11,6 +11,7 @@ export {
   deleteBlock,
   deleteWidget,
   getPublicWidget,
+  getPublicWidgetUrl,
   getWidget,
   listWidgets,
   previewWidgetBlock,

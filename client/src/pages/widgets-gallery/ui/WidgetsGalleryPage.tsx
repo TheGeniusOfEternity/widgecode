@@ -20,6 +20,7 @@ type WidgetsGalleryPageProps = {
   onThemeToggle: (event: MouseEvent<HTMLButtonElement>) => void;
   onCreateWidget: (input: CreateWidgetInput) => Promise<void>;
   onOpenWidget: (id: string) => void;
+  onOpenPreview: (widget: WidgetCardData) => void;
   onCopyWidget: (widget: WidgetCardData) => void;
   onLogout: () => void;
   onDeleteWidget: (id: string) => void;
@@ -35,6 +36,7 @@ export const WidgetsGalleryPage = ({
   onThemeToggle,
   onCreateWidget,
   onOpenWidget,
+  onOpenPreview,
   onCopyWidget,
   onLogout,
   onDeleteWidget,
@@ -97,6 +99,7 @@ export const WidgetsGalleryPage = ({
                 isLanguageLoading={isLanguageLoading}
                 onDelete={onDeleteWidget}
                 onConfigure={onOpenWidget}
+                onOpenPreview={onOpenPreview}
                 onCopy={onCopyWidget}
               />
             ))}

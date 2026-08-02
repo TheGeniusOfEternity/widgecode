@@ -57,6 +57,16 @@ body {
   background: var(--page-bg);
 }
 
+html[data-embed='true'],
+html[data-embed='true'] body {
+  width: max-content;
+  height: max-content;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
 .g-root {
   --g-color-base-brand: var(--action);
   --g-color-base-brand-hover: var(--action-hover);

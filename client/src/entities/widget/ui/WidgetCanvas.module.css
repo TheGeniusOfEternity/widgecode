@@ -7,10 +7,12 @@
   gap: 18px;
   width: min(100%, var(--widget-width, 100%));
   max-width: 100%;
+  height: var(--widget-height, auto);
   min-height: var(--widget-height, 340px);
   margin-inline: auto;
   container-type: inline-size;
   padding: clamp(20px, 4vw, 34px);
+  overflow: hidden;
   color: var(--widget-ink);
   border: 1px solid color-mix(in srgb, var(--widget-accent) 25%, transparent);
   border-radius: 28px;
@@ -29,6 +31,14 @@
   --widget-soft: var(--widget-dark-soft);
   --widget-ink: var(--widget-dark-ink);
   --widget-surface: var(--widget-dark-surface);
+}
+
+.canvas[data-show-chrome='true'] {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.canvas[data-show-chrome='false'] {
+  grid-template-rows: minmax(0, 1fr);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -70,22 +80,22 @@
 .blocks {
   display: grid;
   grid-template-columns: repeat(var(--widget-columns, 1), minmax(0, 1fr));
-  grid-auto-rows: minmax(110px, auto);
+  grid-auto-rows: minmax(0, 1fr);
   gap: 18px;
   align-content: start;
+  min-height: 0;
+  height: 100%;
 }
 
 .blocks[data-columns='1'] {
-  grid-auto-rows: 100cqw;
-}
-
-.blocks[data-columns='2'] {
-  grid-auto-rows: calc(50cqw - 9px);
+  grid-auto-rows: minmax(0, 1fr);
 }
 
 .block {
+  container-type: inline-size;
   min-width: 0;
-  padding: 20px;
+  overflow: hidden;
+  padding: clamp(10px, 4cqi, 20px);
   border: 1px solid color-mix(in srgb, var(--widget-accent) 18%, transparent);
   border-radius: 20px;
   background: color-mix(in srgb, var(--widget-surface) 72%, var(--widget-soft));
@@ -108,12 +118,13 @@
 .blockHeading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(8px, 3cqi, 12px);
 }
 
 .blockHeading > div:last-child {
   display: grid;
-  gap: 3px;
+  min-width: 0;
+  gap: clamp(2px, 1cqi, 3px);
 }
 
 .blockHeading span,
@@ -122,13 +133,13 @@
 .languageList,
 .difficultyRow {
   color: color-mix(in srgb, var(--widget-ink) 60%, transparent);
-  font-size: 12px;
+  font-size: clamp(10px, 4.5cqi, 12px);
 }
 
 .avatar {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: clamp(24px, 16cqi, 42px);
+  height: clamp(24px, 16cqi, 42px);
   place-items: center;
   overflow: hidden;
   border-radius: 14px;
@@ -146,13 +157,13 @@
 .statsBlock,
 .languageBlock {
   display: grid;
-  gap: 18px;
+  gap: clamp(10px, 6cqi, 18px);
 }
 
 .statsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 22px;
+  gap: clamp(10px, 8cqi, 22px);
 }
 
 .stat {
@@ -161,7 +172,7 @@
 }
 
 .stat strong {
-  font-size: clamp(22px, 4vw, 30px);
+  font-size: clamp(14px, 10cqi, 30px);
   letter-spacing: -0.06em;
 }
 
@@ -184,7 +195,7 @@
 .languageList {
   display: flex;
   flex-wrap: wrap;
-  gap: 9px 18px;
+  gap: clamp(6px, 4cqi, 9px) clamp(10px, 8cqi, 18px);
 }
 
 .languageList span {
@@ -207,7 +218,7 @@
 
 .textBlock {
   margin: 0;
-  font-size: clamp(20px, 4vw, 34px);
+  font-size: clamp(16px, 12cqi, 34px);
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.05em;
@@ -216,7 +227,7 @@
 .difficultyRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: clamp(6px, 3cqi, 8px) clamp(10px, 7cqi, 16px);
 }
 
 .difficultyRow .easy {
@@ -307,17 +318,6 @@
   .canvas {
     padding: 18px;
     border-radius: 22px;
-  }
-
-  .blocks .block {
-    padding: 16px;
-    grid-column: auto !important;
-    grid-row: auto !important;
-  }
-
-  .blocks {
-    grid-template-columns: 1fr;
-    grid-auto-rows: 100cqw;
   }
 
   .canvasFooter {
