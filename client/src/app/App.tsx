@@ -33,16 +33,19 @@ import '@/app/Theme.css';
 
 type AppRoute = 'landing' | 'auth' | 'dashboard' | 'editor' | 'public' | 'callback';
 
+const getPathname = () => window.location.pathname.replace(/\/+$/, '') || '/';
+
 const getRoute = (): AppRoute => {
-  if (window.location.pathname === '/dashboard') return 'dashboard';
-  if (/^\/widgets\/[^/]+$/.test(window.location.pathname)) return 'editor';
-  if (/^\/w\/[^/]+$/.test(window.location.pathname)) return 'public';
-  if (window.location.pathname === '/auth/callback') return 'callback';
-  if (['/auth', '/login', '/register'].includes(window.location.pathname)) return 'auth';
+  const pathname = getPathname();
+  if (pathname === '/dashboard') return 'dashboard';
+  if (/^\/widgets\/[^/]+$/.test(pathname)) return 'editor';
+  if (/^\/w\/[^/]+$/.test(pathname)) return 'public';
+  if (pathname === '/auth/callback') return 'callback';
+  if (['/auth', '/login', '/register'].includes(pathname)) return 'auth';
   return 'landing';
 };
 
-const getRouteParam = (prefix: string) => window.location.pathname.slice(prefix.length) || null;
+const getRouteParam = (prefix: string) => getPathname().slice(prefix.length) || null;
 
 const toCardData = (widget: Widget): WidgetCardData => {
   const hasGithub = widget.blocks.some((block) => block.type.startsWith('github'));
@@ -69,10 +72,10 @@ const toCardData = (widget: Widget): WidgetCardData => {
   };
 };
 
-const getAuthTab = (): AuthTab => (window.location.pathname === '/register' ? 'signup' : 'signin');
+const getAuthTab = (): AuthTab => (getPathname() === '/register' ? 'signup' : 'signin');
 
 const getOAuthToken = () => {
-  if (window.location.pathname !== '/auth/callback') return null;
+  if (getPathname() !== '/auth/callback') return null;
   return new URLSearchParams(window.location.hash.slice(1)).get('access_token');
 };
 
@@ -310,6 +313,8 @@ export const App = () => {
     isBootstrapped &&
     (route === 'dashboard' || route === 'editor') &&
     authStatus === 'unauthenticated';
+  const isPrivateRouteTransitioning =
+    (route === 'dashboard' || route === 'editor') && !isAuthorized;
   const isRedirectingFromAuthRoute =
     isBootstrapped && route === 'auth' && authStatus === 'authenticated';
   const isAuthTransitioning =
@@ -317,6 +322,7 @@ export const App = () => {
     isLoggingOut ||
     route === 'callback' ||
     isRedirectingFromPrivateRoute ||
+    isPrivateRouteTransitioning ||
     isRedirectingFromAuthRoute;
   const oauthError =
     route === 'auth' && new URLSearchParams(window.location.search).has('oauth_error')
