@@ -294,15 +294,25 @@ export const WidgetBlockContent = ({
 type WidgetCanvasSkeletonProps = {
   embed?: boolean;
   locale?: WidgetLocale;
+  width?: number;
+  height?: number;
 };
 
 export const WidgetCanvasSkeleton = ({
   embed = false,
   locale = 'en',
+  width = 600,
+  height = 400,
 }: WidgetCanvasSkeletonProps) => (
   <div
     className={`${styles.canvas} ${styles.canvasSkeleton} ${embed ? styles.canvasSkeletonEmbed : ''}`}
     data-show-chrome={!embed}
+    style={
+      {
+        '--widget-width': `${width}px`,
+        '--widget-height': `${height}px`,
+      } as CSSProperties
+    }
     role="status"
     aria-label={locale === 'ru' ? 'Загрузка виджета' : 'Loading widget'}
   >

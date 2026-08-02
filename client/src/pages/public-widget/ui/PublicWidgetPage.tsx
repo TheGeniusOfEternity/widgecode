@@ -12,8 +12,19 @@ type PublicWidgetPageProps = {
   embed?: boolean;
 };
 
+const DEFAULT_WIDGET_DIMENSIONS = { width: 600, height: 400 };
+
+const readDimension = (name: 'width' | 'height', fallback: number) => {
+  const value = Number(new URLSearchParams(window.location.search).get(name));
+  return Number.isFinite(value) && value > 0 ? Math.min(Math.round(value), 2000) : fallback;
+};
+
 export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPageProps) => {
   const t = messages[locale];
+  const initialDimensions = {
+    width: readDimension('width', DEFAULT_WIDGET_DIMENSIONS.width),
+    height: readDimension('height', DEFAULT_WIDGET_DIMENSIONS.height),
+  };
   const [payload, setPayload] = useState<PublicWidgetResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +51,12 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
   if (!payload)
     return (
       <div className={`${styles.status} ${embed ? styles.embedStatus : ''}`}>
-        <WidgetCanvasSkeleton embed={embed} locale={locale} />
+        <WidgetCanvasSkeleton
+          embed={embed}
+          locale={locale}
+          width={initialDimensions.width}
+          height={initialDimensions.height}
+        />
       </div>
     );
 

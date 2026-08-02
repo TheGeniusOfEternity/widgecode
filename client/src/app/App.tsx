@@ -13,6 +13,7 @@ import {
   createWidget,
   deleteWidget,
   getPublicWidgetUrl,
+  getPublicWidgetPath,
   listWidgets,
   API_BASE_URL,
   type CreateWidgetInput,
@@ -269,7 +270,10 @@ export const App = () => {
   };
 
   const handleCopyWidget = async (widget: WidgetCardData) => {
-    const src = getPublicWidgetUrl(widget.slug, true);
+    const src = getPublicWidgetUrl(widget.slug, true, {
+      width: widget.width,
+      height: widget.height,
+    });
     const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
     await navigator.clipboard?.writeText(code);
   };
@@ -336,7 +340,14 @@ export const App = () => {
         onCreateWidget={handleCreateWidget}
         onOpenWidget={(id) => navigate(`/widgets/${id}`)}
         onOpenPreview={(widget) =>
-          navigate(widget.public ? `/w/${widget.slug}` : `/widgets/${widget.id}`)
+          navigate(
+            widget.public
+              ? getPublicWidgetPath(widget.slug, false, {
+                  width: widget.width,
+                  height: widget.height,
+                })
+              : `/widgets/${widget.id}`,
+          )
         }
         onCopyWidget={handleCopyWidget}
         onLogout={handleLogout}

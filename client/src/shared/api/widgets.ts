@@ -102,5 +102,28 @@ export const getPublicWidget = async (slug: string) =>
     skipAuthRefresh: true,
   });
 
-export const getPublicWidgetUrl = (slug: string, embed = false) =>
-  `${window.location.origin}/w/${encodeURIComponent(slug)}${embed ? '?embed=1' : ''}`;
+export type PublicWidgetDimensions = {
+  width: number;
+  height: number;
+};
+
+export const getPublicWidgetPath = (
+  slug: string,
+  embed = false,
+  dimensions?: PublicWidgetDimensions,
+) => {
+  const params = new URLSearchParams();
+  if (embed) params.set('embed', '1');
+  if (dimensions) {
+    params.set('width', String(dimensions.width));
+    params.set('height', String(dimensions.height));
+  }
+  const query = params.toString();
+  return `/w/${encodeURIComponent(slug)}${query ? `?${query}` : ''}`;
+};
+
+export const getPublicWidgetUrl = (
+  slug: string,
+  embed = false,
+  dimensions?: PublicWidgetDimensions,
+) => `${window.location.origin}${getPublicWidgetPath(slug, embed, dimensions)}`;

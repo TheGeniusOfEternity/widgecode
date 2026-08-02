@@ -11,6 +11,7 @@ export {
   deleteBlock,
   deleteWidget,
   getPublicWidget,
+  getPublicWidgetPath,
   getPublicWidgetUrl,
   getWidget,
   listWidgets,
@@ -19,4 +20,4 @@ export {
   updateBlock,
   updateWidget,
 } from '@/shared/api/widgets';
-export type { CreateWidgetInput } from '@/shared/api/widgets';
+export type { CreateWidgetInput, PublicWidgetDimensions } from '@/shared/api/widgets';

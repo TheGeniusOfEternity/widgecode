@@ -22,6 +22,7 @@ All notable changes to this project are documented here.
 
 - Prevented auth form layout shifts when validation errors appear.
 - Replaced the initial iframe loader with a widget skeleton while public data is loading.
+- Kept public widget skeletons at the known widget dimensions instead of stretching them to the viewport.
 
 ## [0.2.0] - 2026-08-02
 

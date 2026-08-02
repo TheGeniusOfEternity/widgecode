@@ -75,7 +75,10 @@ const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
       )}
       <iframe
         className={`${styles.previewFrame} ${isLoaded ? styles.previewFrameLoaded : ''}`}
-        src={getPublicWidgetUrl(widget.slug, true)}
+        src={getPublicWidgetUrl(widget.slug, true, {
+          width: widget.width,
+          height: widget.height,
+        })}
         title={widget.title}
         width={widget.width}
         height={widget.height}

@@ -729,7 +729,10 @@ export const WidgetEditorPage = ({
 
   const copyEmbed = async () => {
     if (!widget || !widget.public) return;
-    const src = getPublicWidgetUrl(widget.slug, true);
+    const src = getPublicWidgetUrl(widget.slug, true, {
+      width: widget.width,
+      height: widget.height,
+    });
     const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
     await navigator.clipboard?.writeText(code);
     setCopied(true);
