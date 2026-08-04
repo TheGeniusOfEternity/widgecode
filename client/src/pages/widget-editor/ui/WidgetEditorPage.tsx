@@ -1089,7 +1089,7 @@ const BlockConfigPanel = ({
       : block.type === 'leetcode-stats'
         ? [
             ['showRanking', locale === 'ru' ? 'Рейтинг' : 'Ranking'],
-            ['showContestRating', 'Contest rating'],
+            ['showContestRating', locale === 'ru' ? 'Рейтинг соревнований' : 'Contest rating'],
           ]
         : [];
   return (

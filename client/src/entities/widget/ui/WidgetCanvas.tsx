@@ -9,6 +9,7 @@ import type {
   WidgetBlock,
 } from '@/entities/widget/model';
 import { paletteTokens } from '@/entities/widget/model';
+import { messages } from '@/shared/locale/content';
 import styles from '@/entities/widget/ui/WidgetCanvas.module.css';
 
 type WidgetCanvasProps = {
@@ -169,6 +170,7 @@ export const WidgetBlockContent = ({
   rendered?: RenderedBlock;
   locale?: WidgetLocale;
 }) => {
+  const t = messages[locale];
   if (rendered?.error) return <p className={styles.error}>{rendered.error}</p>;
   const source = block.type.startsWith('github')
     ? 'github'
@@ -270,10 +272,13 @@ export const WidgetBlockContent = ({
       <div className={styles.statsRow}>
         <Stat label="Solved" value={solved?.all ?? (hasLiveData ? 0 : 312)} />
         {block.config.showRanking !== false && (
-          <Stat label="Ranking" value={data.ranking ?? (hasLiveData ? '—' : 18_240)} />
+          <Stat label={t.leetcodeRanking} value={data.ranking ?? (hasLiveData ? '—' : 18_240)} />
         )}
         {block.config.showContestRating !== false && (
-          <Stat label="Rating" value={data.contestRating ?? (hasLiveData ? '—' : 1_726)} />
+          <Stat
+            label={t.leetcodeContestRating}
+            value={data.contestRating ?? (hasLiveData ? '—' : 1_726)}
+          />
         )}
       </div>
       <div className={styles.difficultyRow}>

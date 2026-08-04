@@ -2,7 +2,12 @@ import type { MouseEvent } from 'react';
 import { useState } from 'react';
 
 import type { AppTheme } from '@/app/config';
-import { WidgetCard, type WidgetCardData, type WidgetCardLabels } from '@/entities/widget';
+import {
+  WidgetCard,
+  WidgetCardSkeleton,
+  type WidgetCardData,
+  type WidgetCardLabels,
+} from '@/entities/widget';
 import type { CreateWidgetInput } from '@/shared/api';
 import { messages, type Locale } from '@/shared/locale/content';
 import { CreateWidgetModal } from '@/pages/widgets-gallery/ui/CreateWidgetModal';
@@ -15,6 +20,7 @@ type WidgetsGalleryPageProps = {
   theme: AppTheme;
   username: string;
   widgets: WidgetCardData[];
+  isWidgetsLoading: boolean;
   isLanguageLoading: boolean;
   onLocaleToggle: () => void;
   onThemeToggle: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -31,6 +37,7 @@ export const WidgetsGalleryPage = ({
   theme,
   username,
   widgets,
+  isWidgetsLoading,
   isLanguageLoading,
   onLocaleToggle,
   onThemeToggle,
@@ -89,7 +96,17 @@ export const WidgetsGalleryPage = ({
           isLanguageLoading={isLanguageLoading}
           onCreateWidget={() => setCreateModalOpen(true)}
         />
-        {widgets.length > 0 ? (
+        {isWidgetsLoading ? (
+          <div
+            className={`${styles.widgetGrid} ${styles.widgetGalleryGrid}`}
+            aria-busy="true"
+            aria-label={t.loading}
+          >
+            {Array.from({ length: 6 }, (_, index) => (
+              <WidgetCardSkeleton key={index} />
+            ))}
+          </div>
+        ) : widgets.length > 0 ? (
           <div className={`${styles.widgetGrid} ${styles.widgetGalleryGrid}`}>
             {widgets.map((widget) => (
               <WidgetCard

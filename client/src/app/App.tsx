@@ -99,6 +99,7 @@ export const App = () => {
   const [route, setRoute] = useState<AppRoute>(getRoute);
   const [authTab, setAuthTab] = useState<AuthTab>(getAuthTab);
   const [visibleWidgets, setVisibleWidgets] = useState<WidgetCardData[]>([]);
+  const [loadedWidgetsKey, setLoadedWidgetsKey] = useState<string | null>(null);
   const [themeReveal, setThemeReveal] = useState<ThemeRevealState | null>(null);
   const [isLocaleTransitioning, setLocaleTransitioning] = useState(false);
   const [isBootstrapped, setBootstrapped] = useState(false);
@@ -107,6 +108,11 @@ export const App = () => {
   const authUser = useAuthStore((state) => state.user);
   const authError = useAuthStore((state) => state.error);
   const prefersReducedMotion = useReducedMotion();
+  const widgetLoadKey =
+    authStatus === 'authenticated' && (route === 'dashboard' || route === 'editor')
+      ? `${authUser?.id ?? 'current'}:${route}`
+      : null;
+  const isWidgetsLoading = widgetLoadKey !== null && loadedWidgetsKey !== widgetLoadKey;
 
   const navigate = useCallback((path: string, replace = false) => {
     if (replace) window.history.replaceState({}, '', path);
@@ -160,19 +166,23 @@ export const App = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (authStatus !== 'authenticated' || (route !== 'dashboard' && route !== 'editor')) return;
+    if (!widgetLoadKey) return;
     let cancelled = false;
     void listWidgets()
       .then((nextWidgets) => {
-        if (!cancelled) setVisibleWidgets(nextWidgets.map(toCardData));
+        if (cancelled) return;
+        setVisibleWidgets(nextWidgets.map(toCardData));
+        setLoadedWidgetsKey(widgetLoadKey);
       })
       .catch(() => {
-        if (!cancelled) setVisibleWidgets([]);
+        if (cancelled) return;
+        setVisibleWidgets([]);
+        setLoadedWidgetsKey(widgetLoadKey);
       });
     return () => {
       cancelled = true;
     };
-  }, [authStatus, route]);
+  }, [widgetLoadKey]);
 
   useEffect(() => {
     if (
@@ -340,6 +350,7 @@ export const App = () => {
         theme={theme}
         username={username}
         widgets={visibleWidgets}
+        isWidgetsLoading={isWidgetsLoading}
         isLanguageLoading={isLocaleTransitioning}
         onLocaleToggle={handleLocaleToggle}
         onThemeToggle={handleThemeToggle}

@@ -3,7 +3,7 @@ import { Button, Card, Icon, Modal } from '@gravity-ui/uikit';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { paletteTokens, type WidgetCardData } from '@/entities/widget/model';
-import { getPublicWidgetUrl } from '@/shared/api';
+import { getPublicWidgetUrl, PUBLIC_WIDGET_MESSAGE_SOURCE } from '@/shared/api';
 import styles from '@/entities/widget/ui/WidgetCard.module.css';
 
 export type WidgetCardLabels = {
@@ -30,10 +30,55 @@ type WidgetCardProps = {
   isLanguageLoading: boolean;
 };
 
+const PreviewSkeleton = () => (
+  <div className={styles.previewSkeleton} aria-hidden="true">
+    <span className={styles.previewSkeletonTitle} />
+    <span className={styles.previewSkeletonSubtitle} />
+    <div className={styles.previewSkeletonStats}>
+      <span />
+      <span />
+      <span />
+    </div>
+  </div>
+);
+
 const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const [isLoaded, setLoaded] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
+  const isLoaded = loadedSlug === widget.slug;
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent<unknown>) => {
+      if (
+        event.origin !== window.location.origin ||
+        event.source !== iframeRef.current?.contentWindow ||
+        !event.data ||
+        typeof event.data !== 'object'
+      ) {
+        return;
+      }
+
+      const message = event.data as {
+        source?: unknown;
+        type?: unknown;
+        slug?: unknown;
+      };
+      if (
+        message.source !== PUBLIC_WIDGET_MESSAGE_SOURCE ||
+        message.slug !== widget.slug ||
+        (message.type !== 'ready' && message.type !== 'error')
+      ) {
+        return;
+      }
+
+      setLoadedSlug(widget.slug);
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [widget.slug]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -62,18 +107,9 @@ const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
       className={`${styles.previewFrameViewport} ${isLoaded ? styles.previewFrameViewportLoaded : ''}`}
       aria-busy={!isLoaded}
     >
-      {!isLoaded && (
-        <div className={styles.previewSkeleton} aria-hidden="true">
-          <span className={styles.previewSkeletonTitle} />
-          <span className={styles.previewSkeletonSubtitle} />
-          <div className={styles.previewSkeletonStats}>
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
-      )}
+      {!isLoaded && <PreviewSkeleton />}
       <iframe
+        ref={iframeRef}
         className={`${styles.previewFrame} ${isLoaded ? styles.previewFrameLoaded : ''}`}
         src={getPublicWidgetUrl(widget.slug, true, {
           width: widget.width,
@@ -88,11 +124,29 @@ const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
           transform: `scale(${scale})`,
         }}
         loading="lazy"
-        onLoad={() => setLoaded(true)}
       />
     </div>
   );
 };
+
+export const WidgetCardSkeleton = () => (
+  <Card className={styles.card} view="clear" aria-hidden="true">
+    <div className={styles.preview}>
+      <PreviewSkeleton />
+    </div>
+    <div className={styles.info}>
+      <div className={styles.meta}>
+        <span className={styles.textSkeletonHeading} />
+        <span className={styles.textSkeleton} />
+        <span className={styles.textSkeleton} />
+      </div>
+      <div className={styles.skeletonActions}>
+        <span className={styles.skeletonAction} />
+        <span className={styles.skeletonAction} />
+      </div>
+    </div>
+  </Card>
+);
 
 export const WidgetCard = ({
   widget,

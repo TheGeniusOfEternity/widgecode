@@ -155,6 +155,9 @@ type LeetcodeResponse = {
         acSubmissionNum?: { difficulty: string; count: number }[];
       } | null;
     } | null;
+    userContestRanking?: {
+      rating?: number | null;
+    } | null;
   };
 };
 
@@ -166,6 +169,7 @@ const getLeetcodeStats = async (username: string) => {
         profile { ranking reputation starRating }
         submitStatsGlobal { acSubmissionNum { difficulty count } }
       }
+      userContestRanking(username: $username) { rating }
     }
   `;
   const response = await getCached(`leetcode:${username}:profile`, () =>
@@ -187,7 +191,7 @@ const getLeetcodeStats = async (username: string) => {
   return {
     username: matchedUser.username,
     ranking: matchedUser.profile?.ranking ?? null,
-    contestRating: null,
+    contestRating: response.data?.userContestRanking?.rating ?? null,
     reputation: matchedUser.profile?.reputation ?? null,
     solved: {
       all: solved.all ?? 0,

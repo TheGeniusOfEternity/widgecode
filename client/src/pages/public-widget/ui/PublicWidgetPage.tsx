@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 
 import { WidgetCanvas, WidgetCanvasSkeleton, type PublicWidgetResponse } from '@/entities/widget';
-import { getPublicWidget } from '@/shared/api';
+import { getPublicWidget, PUBLIC_WIDGET_MESSAGE_SOURCE } from '@/shared/api';
 import type { Locale } from '@/shared/locale/content';
 import { messages } from '@/shared/locale/content';
 import styles from '@/pages/public-widget/ui/PublicWidgetPage.module.css';
@@ -42,9 +42,21 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
     };
   }, [slug, t.unavailable]);
 
+  useEffect(() => {
+    if (!embed || window.parent === window || (!payload && !error)) return;
+    window.parent.postMessage(
+      {
+        source: PUBLIC_WIDGET_MESSAGE_SOURCE,
+        type: error ? 'error' : 'ready',
+        slug,
+      },
+      window.location.origin,
+    );
+  }, [embed, error, payload, slug]);
+
   if (error)
     return (
-      <div className={styles.status} role="alert">
+      <div className={`${styles.status} ${embed ? styles.embedStatus : ''}`} role="alert">
         {error}
       </div>
     );
