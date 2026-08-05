@@ -15,6 +15,8 @@ export type CreateWidgetInput = {
   presetId?: string;
 };
 
+export const PUBLIC_WIDGET_MESSAGE_SOURCE = 'widgecode-public-widget';
+
 export const listWidgets = async () => {
   const response = await apiClient<{ widgets: Widget[] }>('/widgets');
   return response.widgets;

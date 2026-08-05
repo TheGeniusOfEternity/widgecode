@@ -13,6 +13,7 @@ export {
   getPublicWidget,
   getPublicWidgetPath,
   getPublicWidgetUrl,
+  PUBLIC_WIDGET_MESSAGE_SOURCE,
   getWidget,
   listWidgets,
   previewWidgetBlock,

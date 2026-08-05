@@ -1,4 +1,8 @@
-export { WidgetCard, type WidgetCardLabels } from '@/entities/widget/ui/WidgetCard';
+export {
+  WidgetCard,
+  WidgetCardSkeleton,
+  type WidgetCardLabels,
+} from '@/entities/widget/ui/WidgetCard';
 export {
   WidgetBlockContent,
   WidgetCanvas,
