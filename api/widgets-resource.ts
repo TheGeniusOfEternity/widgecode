@@ -10,12 +10,24 @@ const queryValue = (request: Request, key: string): string | undefined => {
   return typeof value === 'string' ? value : undefined;
 };
 
+const buildQueryString = (params: Record<string, string | undefined>): string => {
+  const entries = Object.entries(params).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  );
+  return entries.length > 0
+    ? `?${entries.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&')}`
+    : '';
+};
+
 export default (request: Request, response: Response) => {
   const resource = queryValue(request, 'resource');
   const widgetId = queryValue(request, 'widgetId');
   const blockId = queryValue(request, 'blockId');
   const slug = queryValue(request, 'slug');
   const action = queryValue(request, 'action');
+  const locale = queryValue(request, 'locale');
+  const queryWidth = queryValue(request, 'width');
+  const queryHeight = queryValue(request, 'height');
 
   const path =
     resource === 'widget' && widgetId
@@ -26,9 +38,11 @@ export default (request: Request, response: Response) => {
           : `/api/widgets/${encodeURIComponent(widgetId)}`
       : resource === 'block' && blockId
         ? `/api/blocks/${encodeURIComponent(blockId)}`
-        : resource === 'public' && slug
-          ? `/api/public/widgets/${encodeURIComponent(slug)}`
-          : null;
+        : resource === 'public-image' && slug
+          ? `/api/public/widgets/${encodeURIComponent(slug)}/image.svg${buildQueryString({ locale, width: queryWidth, height: queryHeight })}`
+          : resource === 'public' && slug
+            ? `/api/public/widgets/${encodeURIComponent(slug)}`
+            : null;
 
   if (!path) {
     response.status(404).json({ error: 'Resource route not found' });

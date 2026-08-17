@@ -26,6 +26,10 @@
       "destination": "/api/widgets-resource?resource=block&blockId=:blockId"
     },
     {
+      "source": "/api/public/widgets/:slug/image.svg",
+      "destination": "/api/widgets-resource?resource=public-image&slug=:slug"
+    },
+    {
       "source": "/api/public/widgets/:slug",
       "destination": "/api/widgets-resource?resource=public&slug=:slug"
     },

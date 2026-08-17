@@ -34,6 +34,7 @@ const publicWidgetLimiter = rateLimit({
 });
 
 publicWidgetsRouter.use(publicWidgetLimiter);
+publicWidgetsRouter.get('/:slug/image.svg', widgetController.getPublicImage);
 publicWidgetsRouter.get('/:slug', widgetController.getPublic);
 
 export { publicWidgetsRouter };

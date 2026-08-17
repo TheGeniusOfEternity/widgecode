@@ -9,8 +9,11 @@ import type {
   WidgetBlock,
 } from '@/entities/widget/model';
 import { paletteTokens } from '@/entities/widget/model';
+import { languageColor } from '@shared/widget/WidgetCanvas';
 import { messages } from '@/shared/locale/content';
 import styles from '@/entities/widget/ui/WidgetCanvas.module.css';
+
+type WidgetLocale = 'ru' | 'en';
 
 type WidgetCanvasProps = {
   blocks: WidgetBlock[];
@@ -23,11 +26,9 @@ type WidgetCanvasProps = {
   interactive?: boolean;
   selectedBlockId?: string;
   onSelectBlock?: (id: string) => void;
-  locale?: 'ru' | 'en';
+  locale?: WidgetLocale;
   showChrome?: boolean;
 };
-
-type WidgetLocale = 'ru' | 'en';
 
 const sampleData: Record<BlockType, Record<string, unknown>> = {
   text: { text: 'Build something worth sharing.', align: 'left' },
@@ -57,36 +58,17 @@ const sampleData: Record<BlockType, Record<string, unknown>> = {
 const renderedData = (block: WidgetBlock, renderedBlocks?: RenderedBlock[]) =>
   renderedBlocks?.find((rendered) => rendered.id === block.id);
 
-const githubLanguageColors: Record<string, string> = {
-  assembly: '#6e4c13',
-  c: '#555555',
-  'c#': '#178600',
-  'c++': '#f34b7d',
-  css: '#663399',
-  dart: '#00b4ab',
-  go: '#00add8',
-  html: '#e34c26',
-  java: '#b07219',
-  javascript: '#f1e05a',
-  kotlin: '#a97bff',
-  lua: '#000080',
-  'objective-c': '#438eff',
-  perl: '#0298c3',
-  php: '#4f5d95',
-  python: '#3572a5',
-  r: '#198ce7',
-  ruby: '#701516',
-  rust: '#dea584',
-  scala: '#c22d40',
-  shell: '#89e051',
-  svelte: '#ff3e00',
-  swift: '#f05138',
-  typescript: '#3178c6',
-  vue: '#41b883',
+const getBlockLayout = (block: WidgetBlock): BlockLayout => {
+  const value = block.config.layout;
+  if (!value || typeof value !== 'object') return { x: 0, y: 0, width: 1, height: 1 };
+  const layout = value as Partial<BlockLayout>;
+  return {
+    x: typeof layout.x === 'number' ? layout.x : 0,
+    y: typeof layout.y === 'number' ? layout.y : 0,
+    width: typeof layout.width === 'number' ? layout.width : 1,
+    height: typeof layout.height === 'number' ? layout.height : 1,
+  };
 };
-
-const languageColor = (name: string) =>
-  githubLanguageColors[name.trim().toLowerCase()] ?? '#8b949e';
 
 const PreviewState = ({
   locale,
@@ -125,18 +107,6 @@ const WidgetBlockSkeleton = () => (
     </div>
   </div>
 );
-
-const getBlockLayout = (block: WidgetBlock): BlockLayout => {
-  const value = block.config.layout;
-  if (!value || typeof value !== 'object') return { x: 0, y: 0, width: 1, height: 1 };
-  const layout = value as Partial<BlockLayout>;
-  return {
-    x: typeof layout.x === 'number' ? layout.x : 0,
-    y: typeof layout.y === 'number' ? layout.y : 0,
-    width: typeof layout.width === 'number' ? layout.width : 1,
-    height: typeof layout.height === 'number' ? layout.height : 1,
-  };
-};
 
 const formatNumber = (value: number | undefined) =>
   value === undefined ? '—' : value.toLocaleString();

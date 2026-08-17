@@ -1,10 +1,13 @@
 import type { NextFunction, Response } from 'express';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { z } from 'zod';
 
 import { AppError } from '@server/lib/errors.js';
 import type { AuthRequest } from '@server/middleware/auth.js';
 import { widgetService } from '@server/services/widgetService.js';
 import { renderWidgetStats } from '@server/services/statsService.js';
+import { WidgetCanvas } from '@shared/widget/WidgetCanvas.js';
 import {
   blockTypeSchema,
   blockLayoutSchema,
@@ -16,6 +19,38 @@ import {
 
 const widgetIdSchema = z.string().trim().min(1).max(100);
 const presetIdSchema = z.enum(Object.keys(presetDefinitions) as [string, ...string[]]);
+
+const imageDimension = (value: unknown) => {
+  const parsed = typeof value === 'string' ? Number(value) : Number.NaN;
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 2000) : undefined;
+};
+
+const imageOutputDimensions = (
+  baseWidth: number,
+  baseHeight: number,
+  requestedWidth?: number,
+  requestedHeight?: number,
+) => {
+  if (requestedWidth === undefined && requestedHeight === undefined) return undefined;
+  if (requestedWidth !== undefined && requestedHeight === undefined) {
+    return {
+      width: requestedWidth,
+      height: Math.max(1, Math.round((requestedWidth * baseHeight) / baseWidth)),
+    };
+  }
+  if (requestedWidth === undefined && requestedHeight !== undefined) {
+    return {
+      width: Math.max(1, Math.round((requestedHeight * baseWidth) / baseHeight)),
+      height: requestedHeight,
+    };
+  }
+
+  const scale = Math.min(requestedWidth! / baseWidth, requestedHeight! / baseHeight);
+  return {
+    width: Math.max(1, Math.round(baseWidth * scale)),
+    height: Math.max(1, Math.round(baseHeight * scale)),
+  };
+};
 
 const createWidgetSchema = z.object({
   title: z.string().trim().min(1, 'Widget name is required').max(80),
@@ -197,6 +232,62 @@ export class WidgetController {
         return;
       }
       res.json({ widget, rendered: await renderWidgetStats(widget) });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getPublicImage = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const widget = await widgetService.getPublic(parse(widgetIdSchema, req.params.slug));
+      if (!widget) {
+        res.status(404).json({ error: 'Public widget not found' });
+        return;
+      }
+
+      const locale = req.query.locale === 'ru' ? 'ru' : 'en';
+      const rendered = await renderWidgetStats(widget);
+      const outputDimensions = imageOutputDimensions(
+        widget.width,
+        widget.height,
+        imageDimension(req.query.width),
+        imageDimension(req.query.height),
+      );
+      const config =
+        widget.config && typeof widget.config === 'object'
+          ? (widget.config as Record<string, unknown>)
+          : {};
+      const svg = renderToStaticMarkup(
+        createElement(WidgetCanvas, {
+          title: widget.title,
+          blocks: widget.blocks.map((block) => ({
+            id: block.id,
+            type: block.type,
+            position: block.position,
+            config: block.config,
+          })),
+          palette: typeof config.palette === 'string' ? config.palette : 'lavender',
+          paletteMode: typeof config.paletteMode === 'string' ? config.paletteMode : 'auto',
+          columns:
+            config.grid && typeof config.grid === 'object'
+              ? Number((config.grid as Record<string, unknown>).columns) || 1
+              : 1,
+          width: widget.width,
+          height: widget.height,
+          outputWidth: outputDimensions?.width,
+          outputHeight: outputDimensions?.height,
+          renderedBlocks: rendered.blocks,
+          locale,
+          showChrome: false,
+        }),
+      );
+      res
+        .status(200)
+        .set({
+          'Cache-Control': 'public, max-age=900, s-maxage=900, stale-while-revalidate=60',
+          'Content-Type': 'image/svg+xml; charset=utf-8',
+        })
+        .send(svg);
     } catch (error) {
       next(error);
     }

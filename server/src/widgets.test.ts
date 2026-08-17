@@ -238,3 +238,34 @@ it('rejects adding a sixth block', async () => {
     .send({ type: 'text', config: { text: 'Too many' } })
     .expect(400, { error: 'A widget can contain at most 5 blocks' });
 });
+
+it('renders a public widget as an SVG image', async () => {
+  const publicWidget = {
+    ...widget,
+    public: true,
+    blocks: [
+      {
+        id: 'block-1',
+        widgetId: widget.id,
+        position: 0,
+        type: 'text',
+        config: {
+          text: 'Readme & stats',
+          align: 'left',
+          layout: { x: 0, y: 0, width: 1, height: 1 },
+        },
+      },
+    ],
+  };
+  prismaMocks.widget.findFirst.mockResolvedValue(publicWidget);
+
+  const response = await request(app)
+    .get(`/api/public/widgets/${publicWidget.slug}/image.svg`)
+    .expect(200);
+
+  expect(response.headers['content-type']).toMatch(/image\/svg\+xml/);
+  expect(response.headers['cache-control']).toContain('max-age=900');
+  const svg = response.body.toString('utf8');
+  expect(svg).toContain('<svg');
+  expect(svg).toContain('Readme &amp; stats');
+});

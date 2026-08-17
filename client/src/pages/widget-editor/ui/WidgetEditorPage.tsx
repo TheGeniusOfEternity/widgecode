@@ -16,12 +16,14 @@ import {
   addBlock,
   deleteBlock,
   getWidget,
+  getPublicWidgetImageUrl,
   getPublicWidgetUrl,
   previewWidgetBlock,
   updateBlock,
   updateBlockLayouts,
   updateWidget,
 } from '@/shared/api';
+import { escapeHtmlAttribute } from '@/shared/lib/escapeHtml';
 import {
   blockDefinitions,
   defaultBlockConfig,
@@ -320,6 +322,7 @@ export const WidgetEditorPage = ({
   const [isSaving, setSaving] = useState(false);
   const [isDirty, setDirty] = useState(false);
   const [isCopied, setCopied] = useState(false);
+  const [isSvgCopied, setSvgCopied] = useState(false);
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
   const [dropCell, setDropCell] = useState<{ x: number; y: number } | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
@@ -739,6 +742,16 @@ export const WidgetEditorPage = ({
     window.setTimeout(() => setCopied(false), 1600);
   };
 
+  const copySvgEmbed = async () => {
+    if (!widget || !widget.public) return;
+    const src = getPublicWidgetImageUrl(widget.slug, locale);
+    const alt = escapeHtmlAttribute(widget.title);
+    const code = `<img src="${src}" alt="${alt}" width="${widget.width}" height="${widget.height}" />`;
+    await navigator.clipboard?.writeText(code);
+    setSvgCopied(true);
+    window.setTimeout(() => setSvgCopied(false), 1600);
+  };
+
   const guardLeave = () => {
     onBack();
   };
@@ -824,7 +837,13 @@ export const WidgetEditorPage = ({
           {widget.public && (
             <Button view="outlined-action" onClick={copyEmbed}>
               <Icon data={isCopied ? Check : Copy} size={17} />
-              {isCopied ? t.copied : t.copy}
+              {isCopied ? t.copied : t.copyIframe}
+            </Button>
+          )}
+          {widget.public && (
+            <Button view="outlined-action" onClick={copySvgEmbed}>
+              <Icon data={isSvgCopied ? Check : Copy} size={17} />
+              {isSvgCopied ? t.copied : t.copySvg}
             </Button>
           )}
           {!widget.public && (

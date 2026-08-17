@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@server': fileURLToPath(new URL('./src', import.meta.url)),
+      '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
     },
   },
   test: {
