@@ -18,6 +18,12 @@
     "test": "npm run test -w client && npm run test -w server",
     "prepare": "husky"
   },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0",
+    "@prisma/config": {
+      "deepmerge-ts": "^8.0.0"
+    }
+  },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
       "eslint --fix",

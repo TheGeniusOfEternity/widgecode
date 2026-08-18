@@ -19,6 +19,10 @@ All notable changes to this project are documented here.
 - Kept public iframe preview skeletons visible until the widget payload and block data are ready.
 - Stabilized the public widget loading layout to prevent the decorative background orb from jumping.
 
+### Security
+
+- Resolved `deepmerge-ts` high-severity vulnerability via npm overrides (GHSA-ggr8-5vv4-36mx).
+
 ## [0.3.0] - 2026-08-02
 
 ### Added
