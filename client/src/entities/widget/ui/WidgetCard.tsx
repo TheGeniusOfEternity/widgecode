@@ -1,5 +1,5 @@
 import { Copy, Gear, TrashBin } from '@gravity-ui/icons';
-import { Button, Card, Icon, Modal } from '@gravity-ui/uikit';
+import { Button, Card, DropdownMenu, Icon, Modal } from '@gravity-ui/uikit';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { paletteTokens, type WidgetCardData } from '@/entities/widget/model';
@@ -11,6 +11,8 @@ export type WidgetCardLabels = {
   open: string;
   configure: string;
   copy: string;
+  copyIframe: string;
+  copySvg: string;
   published: string;
   draft: string;
   remove: string;
@@ -26,7 +28,7 @@ type WidgetCardProps = {
   onDelete: (id: string) => void;
   onConfigure: (id: string) => void;
   onOpenPreview: (widget: WidgetCardData) => void;
-  onCopy: (widget: WidgetCardData) => void;
+  onCopy: (widget: WidgetCardData, format: 'iframe' | 'svg') => void | Promise<void>;
   isLanguageLoading: boolean;
 };
 
@@ -217,14 +219,31 @@ export const WidgetCard = ({
             >
               <Icon data={Gear} size={18} />
             </Button>
-            <Button
+            <DropdownMenu
               disabled={!widget.public}
-              view="outlined"
-              onClick={() => onCopy(widget)}
-              aria-label={labels.copy}
-            >
-              <Icon data={Copy} size={18} />
-            </Button>
+              items={[
+                {
+                  text: labels.copyIframe,
+                  action: () => void onCopy(widget, 'iframe'),
+                },
+                {
+                  text: labels.copySvg,
+                  action: () => void onCopy(widget, 'svg'),
+                },
+              ]}
+              switcherWrapperClassName={styles.copyMenu}
+              renderSwitcher={({ onClick, onKeyDown }) => (
+                <Button
+                  className={styles.copyAction}
+                  view="outlined"
+                  onClick={onClick}
+                  onKeyDown={onKeyDown}
+                  aria-label={labels.copy}
+                >
+                  <Icon data={Copy} size={18} />
+                </Button>
+              )}
+            />
             <Button
               view="outlined-danger"
               onClick={() => setDeleteModalOpen(true)}

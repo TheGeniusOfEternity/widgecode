@@ -14,11 +14,13 @@ import {
   deleteWidget,
   getPublicWidgetUrl,
   getPublicWidgetPath,
+  getPublicWidgetImageUrl,
   listWidgets,
   API_BASE_URL,
   type CreateWidgetInput,
 } from '@/shared/api';
 import { AuthTransitionLoader } from '@/shared/ui/auth-transition-loader/AuthTransitionLoader';
+import { escapeHtmlAttribute } from '@/shared/lib/escapeHtml';
 import {
   APP_LOCALE_STORAGE_KEY,
   APP_THEME_STORAGE_KEY,
@@ -282,12 +284,17 @@ export const App = () => {
     setVisibleWidgets((currentWidgets) => currentWidgets.filter((widget) => widget.id !== id));
   };
 
-  const handleCopyWidget = async (widget: WidgetCardData) => {
-    const src = getPublicWidgetUrl(widget.slug, true, {
-      width: widget.width,
-      height: widget.height,
-    });
-    const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
+  const handleCopyWidget = async (widget: WidgetCardData, format: 'iframe' | 'svg') => {
+    const code =
+      format === 'svg'
+        ? `<img src="${getPublicWidgetImageUrl(widget.slug, locale)}" alt="${escapeHtmlAttribute(widget.title)}" width="${widget.width}" height="${widget.height}" />`
+        : (() => {
+            const src = getPublicWidgetUrl(widget.slug, true, {
+              width: widget.width,
+              height: widget.height,
+            });
+            return `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
+          })();
     await navigator.clipboard?.writeText(code);
   };
 

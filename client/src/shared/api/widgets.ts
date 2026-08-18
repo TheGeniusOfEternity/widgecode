@@ -129,3 +129,11 @@ export const getPublicWidgetUrl = (
   embed = false,
   dimensions?: PublicWidgetDimensions,
 ) => `${window.location.origin}${getPublicWidgetPath(slug, embed, dimensions)}`;
+
+export const getPublicWidgetImagePath = (slug: string, locale: 'ru' | 'en' = 'en') => {
+  const query = locale === 'ru' ? '?locale=ru' : '';
+  return `/api/public/widgets/${encodeURIComponent(slug)}/image.svg${query}`;
+};
+
+export const getPublicWidgetImageUrl = (slug: string, locale: 'ru' | 'en' = 'en') =>
+  `${window.location.origin}${getPublicWidgetImagePath(slug, locale)}`;

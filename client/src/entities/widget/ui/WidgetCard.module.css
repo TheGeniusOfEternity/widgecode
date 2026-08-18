@@ -306,6 +306,15 @@
   animation: card-skeleton-shimmer 1s linear infinite;
 }
 
+.copyMenu {
+  display: contents;
+}
+
+.copyAction {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+}
+
 @media (max-width: 760px) {
   .configureAction {
     display: none;
@@ -317,6 +326,11 @@
 
   .actions button:last-child {
     grid-column: 1 / 2;
+  }
+
+  .copyAction {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
   }
 }
 

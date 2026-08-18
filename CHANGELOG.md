@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Added live SVG image export URLs and README-ready HTML snippets for public widgets.
+- Added proportional `width` and `height` query scaling for SVG image URLs.
+- Extracted shared widget SVG-rendering primitives for server-side export.
+- Added shared `languageColor` utility used by both client and server.
+
+### Fixed
+
+- Localized LeetCode ranking and contest rating labels in Russian and English.
+- Added live LeetCode contest rating data to rendered statistics.
+- Added skeleton cards for the initial widgets gallery load instead of showing the empty state prematurely.
+- Kept public iframe preview skeletons visible until the widget payload and block data are ready.
+- Stabilized the public widget loading layout to prevent the decorative background orb from jumping.
+
+### Security
+
+- Resolved `deepmerge-ts` high-severity vulnerability via npm overrides (GHSA-ggr8-5vv4-36mx).
+
 ## [0.3.0] - 2026-08-02
 
 ### Added

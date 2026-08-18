@@ -11,6 +11,8 @@ export {
   deleteBlock,
   deleteWidget,
   getPublicWidget,
+  getPublicWidgetImagePath,
+  getPublicWidgetImageUrl,
   getPublicWidgetPath,
   getPublicWidgetUrl,
   PUBLIC_WIDGET_MESSAGE_SOURCE,

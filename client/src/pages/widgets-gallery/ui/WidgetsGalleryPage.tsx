@@ -27,7 +27,7 @@ type WidgetsGalleryPageProps = {
   onCreateWidget: (input: CreateWidgetInput) => Promise<void>;
   onOpenWidget: (id: string) => void;
   onOpenPreview: (widget: WidgetCardData) => void;
-  onCopyWidget: (widget: WidgetCardData) => void;
+  onCopyWidget: (widget: WidgetCardData, format: 'iframe' | 'svg') => void | Promise<void>;
   onLogout: () => void;
   onDeleteWidget: (id: string) => void;
 };
@@ -63,6 +63,8 @@ export const WidgetsGalleryPage = ({
     open: t.open,
     configure: t.configure,
     copy: t.copy,
+    copyIframe: t.copyIframe,
+    copySvg: t.copySvg,
     published: t.published,
     draft: t.draft,
     remove: t.remove,
