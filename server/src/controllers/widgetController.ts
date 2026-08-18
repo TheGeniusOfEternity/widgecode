@@ -101,7 +101,10 @@ const userId = (req: AuthRequest) => {
 };
 
 const AVATAR_CACHE_TTL_MS = 15 * 60 * 1000;
-const avatarCache = new Map<string, { expiresAt: number; dataUri: string }>();
+const AVATAR_NEGATIVE_TTL_MS = 5 * 60 * 1000;
+const AVATAR_ERROR_TTL_MS = 30 * 1000;
+const avatarCache = new Map<string, { expiresAt: number; dataUri: string | null }>();
+const inflightAvatars = new Map<string, Promise<string | null>>();
 
 const asHttpUrl = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -112,12 +115,11 @@ const asHttpUrl = (value: unknown): string | null => {
 const withAvatarSize = (url: string, size: number): string =>
   `${url}${url.includes('?') ? '&' : '?'}s=${size}`;
 
-const fetchAvatarDataUri = async (url: string): Promise<string | null> => {
-  const now = Date.now();
-  const cached = avatarCache.get(url);
-  if (cached && cached.expiresAt > now) return cached.dataUri;
-  if (cached) avatarCache.delete(url);
+const storeAvatar = (url: string, dataUri: string | null, ttl: number) => {
+  avatarCache.set(url, { expiresAt: Date.now() + ttl, dataUri });
+};
 
+const doFetchAvatar = async (url: string): Promise<string | null> => {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
@@ -129,17 +131,35 @@ const fetchAvatarDataUri = async (url: string): Promise<string | null> => {
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      storeAvatar(url, null, AVATAR_NEGATIVE_TTL_MS);
+      return null;
+    }
 
     const contentType = response.headers.get('content-type') ?? '';
     const type = contentType.split(';')[0].trim() || 'image/png';
     const buffer = Buffer.from(await response.arrayBuffer()).toString('base64');
     const dataUri = `data:${type};base64,${buffer}`;
-    avatarCache.set(url, { expiresAt: Date.now() + AVATAR_CACHE_TTL_MS, dataUri });
+    storeAvatar(url, dataUri, AVATAR_CACHE_TTL_MS);
     return dataUri;
   } catch {
+    storeAvatar(url, null, AVATAR_ERROR_TTL_MS);
     return null;
   }
+};
+
+const fetchAvatarDataUri = async (url: string): Promise<string | null> => {
+  const now = Date.now();
+  const cached = avatarCache.get(url);
+  if (cached && cached.expiresAt > now) return cached.dataUri;
+  if (cached) avatarCache.delete(url);
+
+  const inflight = inflightAvatars.get(url);
+  if (inflight) return inflight;
+
+  const promise = doFetchAvatar(url).finally(() => inflightAvatars.delete(url));
+  inflightAvatars.set(url, promise);
+  return promise;
 };
 
 const buildAvatarDataUris = async (

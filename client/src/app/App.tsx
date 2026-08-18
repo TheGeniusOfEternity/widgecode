@@ -293,7 +293,7 @@ export const App = () => {
               width: widget.width,
               height: widget.height,
             });
-            return `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
+            return `<iframe src="${src}" width="${widget.width}" height="${widget.height}" style="display:block;border:0" loading="lazy"></iframe>`;
           })();
     await navigator.clipboard?.writeText(code);
   };
@@ -383,6 +383,11 @@ export const App = () => {
         locale={locale}
         onBack={() => navigate('/dashboard')}
         onOpenPublic={(slug) => navigate(`/w/${slug}`)}
+        onSave={(saved) =>
+          setVisibleWidgets((current) =>
+            current.map((widget) => (widget.id === saved.id ? toCardData(saved) : widget)),
+          )
+        }
       />
     );
 

@@ -60,6 +60,7 @@ type WidgetEditorPageProps = {
   locale: Locale;
   onBack: () => void;
   onOpenPublic: (slug: string) => void;
+  onSave?: (widget: Widget) => void;
 };
 
 type CachedEditorState = { savedAt: number; widget: Widget };
@@ -310,6 +311,7 @@ export const WidgetEditorPage = ({
   locale,
   onBack,
   onOpenPublic,
+  onSave,
 }: WidgetEditorPageProps) => {
   const t = messages[locale];
   const prefersReducedMotion = useReducedMotion();
@@ -687,6 +689,7 @@ export const WidgetEditorPage = ({
           isDirtyRef.current = true;
           setDirty(true);
         }
+        onSave?.(normalized);
       } catch (saveError) {
         setError(saveError instanceof Error ? saveError.message : t.unavailable);
       } finally {
@@ -703,11 +706,27 @@ export const WidgetEditorPage = ({
     void handleSave();
   });
 
+  const flushOnClose = useEffectEvent(() => {
+    if (isDirtyRef.current) void handleSave();
+  });
+
   useEffect(() => {
     if (!widget || !isDirty) return;
     const timeout = window.setTimeout(triggerAutosave, 1500);
     return () => window.clearTimeout(timeout);
   }, [isDirty, widget?.id, widget]);
+
+  useEffect(() => {
+    if (!widget) return;
+    window.addEventListener('pagehide', flushOnClose);
+    return () => window.removeEventListener('pagehide', flushOnClose);
+  }, [widget]);
+
+  useEffect(() => {
+    return () => {
+      flushOnClose();
+    };
+  }, []);
 
   const handleUnpublish = async () => {
     if (!widget) return;
@@ -751,7 +770,8 @@ export const WidgetEditorPage = ({
     window.setTimeout(() => setSvgCopied(false), 1600);
   };
 
-  const guardLeave = () => {
+  const guardLeave = async () => {
+    if (isDirtyRef.current) await handleSave();
     onBack();
   };
 

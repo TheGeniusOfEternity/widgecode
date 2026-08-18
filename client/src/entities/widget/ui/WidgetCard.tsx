@@ -47,9 +47,15 @@ const PreviewSkeleton = () => (
 const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
-  const [scale, setScale] = useState(1);
-  const isLoaded = loadedSlug === widget.slug;
+  const [loaded, setLoaded] = useState<{ slug: string; width: number; height: number } | null>(
+    null,
+  );
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const isLoaded =
+    loaded !== null &&
+    loaded.slug === widget.slug &&
+    loaded.width === widget.width &&
+    loaded.height === widget.height;
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent<unknown>) => {
@@ -75,18 +81,18 @@ const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
         return;
       }
 
-      setLoadedSlug(widget.slug);
+      setLoaded({ slug: widget.slug, width: widget.width, height: widget.height });
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [widget.slug]);
+  }, [widget.height, widget.slug, widget.width]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
-    const updateScale = () => {
+    const measure = () => {
       const { paddingLeft, paddingRight, paddingTop, paddingBottom } =
         window.getComputedStyle(viewport);
       const width =
@@ -94,14 +100,19 @@ const WidgetPreviewFrame = ({ widget }: { widget: WidgetCardData }) => {
       const height =
         viewport.clientHeight - Number.parseFloat(paddingTop) - Number.parseFloat(paddingBottom);
       if (!width || !height) return;
-      setScale(Math.min(1, width / widget.width, height / widget.height));
+      setViewportSize({ width, height });
     };
 
-    updateScale();
-    const observer = new ResizeObserver(updateScale);
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [widget.height, widget.width]);
+  }, []);
+
+  const scale =
+    viewportSize.width && viewportSize.height
+      ? Math.min(1, viewportSize.width / widget.width, viewportSize.height / widget.height)
+      : 1;
 
   return (
     <div
