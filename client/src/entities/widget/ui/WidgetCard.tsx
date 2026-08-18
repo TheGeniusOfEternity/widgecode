@@ -231,6 +231,7 @@ export const WidgetCard = ({
                   action: () => void onCopy(widget, 'svg'),
                 },
               ]}
+              popupProps={{ placement: 'bottom-end' }}
               switcherWrapperClassName={styles.copyMenu}
               renderSwitcher={({ onClick, onKeyDown }) => (
                 <Button
