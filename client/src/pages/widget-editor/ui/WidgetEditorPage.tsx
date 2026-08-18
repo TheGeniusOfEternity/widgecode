@@ -46,8 +46,6 @@ const MAX_BLOCKS = 5;
 const MAX_COLUMNS = 2;
 const GRID_GAP = 18;
 const WIDGET_WIDTH = 600;
-const WIDGET_BASE_HEIGHT = 200;
-const WIDGET_ROW_HEIGHT = 200;
 const DEFAULT_LAYOUT: BlockLayout = { x: 0, y: 0, width: 1, height: 1 };
 
 const blockSizes = [
@@ -117,9 +115,11 @@ const getWidgetDimensions = (blocks: WidgetBlock[]) => {
       return layout.y + layout.height;
     }),
   );
+  const padding = Math.min(34, Math.max(20, WIDGET_WIDTH * 0.04));
+  const cellWidth = (WIDGET_WIDTH - padding * 2 - GRID_GAP * (MAX_COLUMNS - 1)) / MAX_COLUMNS;
   return {
     width: WIDGET_WIDTH,
-    height: Math.min(1200, WIDGET_BASE_HEIGHT + rows * WIDGET_ROW_HEIGHT),
+    height: Math.min(1200, Math.round(rows * cellWidth + GRID_GAP * (rows - 1) + padding * 2)),
   };
 };
 
@@ -654,12 +654,11 @@ export const WidgetEditorPage = ({
     }));
   };
 
-  const handleSave = (publish = false): Promise<void> => {
+  const handleSave = async (publish = false): Promise<void> => {
     if (savePromiseRef.current) {
       const pending = savePromiseRef.current;
-      return pending.then(() => {
-        if (publish || isDirtyRef.current) return handleSave(publish);
-      });
+      await pending;
+      if (publish || isDirtyRef.current) return handleSave(publish);
     }
     const run = (async () => {
       const current = widgetRef.current;
@@ -736,7 +735,7 @@ export const WidgetEditorPage = ({
       width: widget.width,
       height: widget.height,
     });
-    const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" frameborder="0" style="display:block;border:0" loading="lazy"></iframe>`;
+    const code = `<iframe src="${src}" width="${widget.width}" height="${widget.height}" style="display:block;border:0" loading="lazy"></iframe>`;
     await navigator.clipboard?.writeText(code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
