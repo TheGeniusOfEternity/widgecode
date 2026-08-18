@@ -51,3 +51,44 @@ it('scales the SVG viewport without changing the widget viewBox', () => {
   expect(svg).toContain('width="300" height="200" viewBox="0 0 600 400"');
   expect(svg).toContain('preserveAspectRatio="xMidYMid meet"');
 });
+
+it('inlines avatars as data URIs instead of external URLs', () => {
+  const svg = renderToStaticMarkup(
+    createElement(WidgetCanvas, {
+      title: 'Avatar widget',
+      blocks: [
+        {
+          id: 'block-1',
+          type: 'github-stats',
+          position: 0,
+          config: { layout: { x: 0, y: 0, width: 1, height: 1 } },
+        },
+      ],
+      palette: 'lavender',
+      paletteMode: 'light',
+      columns: 1,
+      width: 600,
+      height: 400,
+      renderedBlocks: [
+        {
+          id: 'block-1',
+          type: 'github-stats',
+          position: 0,
+          data: {
+            username: 'octocat',
+            name: 'The Octocat',
+            avatarUrl: 'https://avatars.githubusercontent.com/u/583231',
+            publicRepositories: 8,
+            followers: 100,
+            following: 9,
+          },
+        },
+      ],
+      avatarDataUris: { 'block-1': 'data:image/png;base64,iVBORw0KGgo=' },
+      showChrome: false,
+    }),
+  );
+
+  expect(svg).toContain('href="data:image/png;base64,iVBORw0KGgo="');
+  expect(svg).not.toContain('avatars.githubusercontent.com');
+});

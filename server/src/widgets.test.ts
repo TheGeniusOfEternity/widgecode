@@ -269,3 +269,59 @@ it('renders a public widget as an SVG image', async () => {
   expect(svg).toContain('<svg');
   expect(svg).toContain('Readme &amp; stats');
 });
+
+it('inlines the GitHub avatar as a data URI in the public SVG image', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.startsWith('https://api.github.com/users/')) {
+        return new Response(
+          JSON.stringify({
+            login: 'octocat',
+            name: 'The Octocat',
+            avatar_url: 'https://avatars.githubusercontent.com/u/583231?v=4',
+            bio: 'Hello world',
+            public_repos: 8,
+            followers: 100,
+            following: 9,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.startsWith('https://avatars.githubusercontent.com/')) {
+        return new Response(Buffer.from([0x89, 0x50, 0x4e, 0x47]), {
+          status: 200,
+          headers: { 'Content-Type': 'image/png' },
+        });
+      }
+      return new Response('Not found', { status: 404 });
+    }),
+  );
+
+  const publicWidget = {
+    ...widget,
+    public: true,
+    blocks: [
+      {
+        id: 'block-1',
+        widgetId: widget.id,
+        position: 0,
+        type: 'github-stats',
+        config: { layout: { x: 0, y: 0, width: 1, height: 1 } },
+      },
+    ],
+  };
+  prismaMocks.widget.findFirst.mockResolvedValue(publicWidget);
+
+  const response = await request(app)
+    .get(`/api/public/widgets/${publicWidget.slug}/image.svg`)
+    .expect(200);
+
+  const svg = response.body.toString('utf8');
+  expect(svg).toContain('data:image/png;base64,');
+  expect(svg).not.toContain('avatars.githubusercontent.com');
+  expect(svg).toContain('The Octocat');
+
+  vi.unstubAllGlobals();
+});

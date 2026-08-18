@@ -24,6 +24,7 @@ export type WidgetCanvasProps = {
   outputWidth?: number;
   outputHeight?: number;
   renderedBlocks?: WidgetCanvasRenderedBlock[];
+  avatarDataUris?: Record<string, string>;
   locale?: 'ru' | 'en';
   showChrome?: boolean;
 };
@@ -338,6 +339,7 @@ const BlockContent = ({
   locale,
   width,
   height,
+  avatarDataUris,
 }: {
   block: WidgetCanvasBlock;
   rendered?: WidgetCanvasRenderedBlock;
@@ -345,6 +347,7 @@ const BlockContent = ({
   locale: 'ru' | 'en';
   width: number;
   height: number;
+  avatarDataUris?: Record<string, string>;
 }) => {
   const padding = Math.min(20, Math.max(10, width * 0.04));
   const contentWidth = Math.max(width - padding * 2, 80);
@@ -425,7 +428,7 @@ const BlockContent = ({
 
   if (block.type === 'github-stats') {
     const avatarSize = clamp(width * 0.16, 24, 42);
-    const avatarUrl = imageUrl(data.avatarUrl);
+    const avatarHref = avatarDataUris?.[block.id] ?? imageUrl(data.avatarUrl);
     const avatarId = `avatar-${safeId(block.id)}`;
     const headingX = padding + avatarSize + 12;
     const statsY = padding + avatarSize + 18;
@@ -452,13 +455,13 @@ const BlockContent = ({
           fill={tokens.accent}
           fillOpacity={0.22}
         />
-        {avatarUrl && (
+        {avatarHref && (
           <>
             <clipPath id={avatarId}>
               <rect x={padding} y={padding} width={avatarSize} height={avatarSize} rx={14} />
             </clipPath>
             <image
-              href={avatarUrl}
+              href={avatarHref}
               x={padding}
               y={padding}
               width={avatarSize}
@@ -659,6 +662,7 @@ export const WidgetCanvas = ({
   outputWidth,
   outputHeight,
   renderedBlocks = [],
+  avatarDataUris,
   locale = 'en',
   showChrome = false,
 }: WidgetCanvasProps) => {
@@ -798,6 +802,7 @@ export const WidgetCanvas = ({
                   locale={locale}
                   width={blockWidth}
                   height={blockHeight}
+                  avatarDataUris={avatarDataUris}
                 />
               </g>
             </g>
