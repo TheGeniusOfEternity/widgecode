@@ -100,6 +100,67 @@ const userId = (req: AuthRequest) => {
   return req.userId;
 };
 
+const AVATAR_CACHE_TTL_MS = 15 * 60 * 1000;
+const avatarCache = new Map<string, { expiresAt: number; dataUri: string }>();
+
+const asHttpUrl = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+};
+
+const withAvatarSize = (url: string, size: number): string =>
+  `${url}${url.includes('?') ? '&' : '?'}s=${size}`;
+
+const fetchAvatarDataUri = async (url: string): Promise<string | null> => {
+  const now = Date.now();
+  const cached = avatarCache.get(url);
+  if (cached && cached.expiresAt > now) return cached.dataUri;
+  if (cached) avatarCache.delete(url);
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(withAvatarSize(url, 84), {
+      headers: {
+        Accept: 'image/avif,image/webp,image/png,image/jpeg',
+        'User-Agent': 'widgecode-widget-builder',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') ?? '';
+    const type = contentType.split(';')[0].trim() || 'image/png';
+    const buffer = Buffer.from(await response.arrayBuffer()).toString('base64');
+    const dataUri = `data:${type};base64,${buffer}`;
+    avatarCache.set(url, { expiresAt: Date.now() + AVATAR_CACHE_TTL_MS, dataUri });
+    return dataUri;
+  } catch {
+    return null;
+  }
+};
+
+const buildAvatarDataUris = async (
+  renderedBlocks: { id: string; data?: unknown }[],
+): Promise<Record<string, string>> => {
+  const results: Record<string, string> = {};
+  await Promise.all(
+    renderedBlocks.map(async (block) => {
+      const data =
+        block.data && typeof block.data === 'object'
+          ? (block.data as Record<string, unknown>)
+          : null;
+      const url = data ? asHttpUrl(data.avatarUrl) : null;
+      if (!url) return;
+      const dataUri = await fetchAvatarDataUri(url);
+      if (dataUri) results[block.id] = dataUri;
+    }),
+  );
+  return results;
+};
+
 export class WidgetController {
   list = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
@@ -247,6 +308,7 @@ export class WidgetController {
 
       const locale = req.query.locale === 'ru' ? 'ru' : 'en';
       const rendered = await renderWidgetStats(widget);
+      const avatarDataUris = await buildAvatarDataUris(rendered.blocks);
       const outputDimensions = imageOutputDimensions(
         widget.width,
         widget.height,
@@ -277,6 +339,7 @@ export class WidgetController {
           outputWidth: outputDimensions?.width,
           outputHeight: outputDimensions?.height,
           renderedBlocks: rendered.blocks,
+          avatarDataUris,
           locale,
           showChrome: false,
         }),
