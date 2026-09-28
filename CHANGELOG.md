@@ -13,6 +13,7 @@ All notable changes to this project are documented here.
 
 ### Changed
 
+- Removed the automatic palette mode; widgets are either light or dark, and existing auto widgets open as light.
 - Unified widget rendering: the editor, public page, iframe embed and SVG export now share one geometry and typography module, so widgets look identical everywhere.
 - The editor and public page render the widget at its real size and scale it to fit, instead of reflowing it to the screen width.
 - Removed the "live widget preview" header and footer from inside the widget on the editor and public page.

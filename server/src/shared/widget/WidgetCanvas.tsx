@@ -644,7 +644,7 @@ export const WidgetCanvas = ({
   title = 'WidgeCode widget',
   blocks,
   palette = 'lavender',
-  paletteMode = 'auto',
+  paletteMode = 'light',
   columns = MAX_GRID_COLUMNS,
   width = 600,
   height = 400,

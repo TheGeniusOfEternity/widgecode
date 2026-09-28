@@ -5,6 +5,7 @@ import {
   WidgetCanvas,
   WidgetCanvasSkeleton,
   paletteTokens,
+  type PaletteMode,
   type PublicWidgetResponse,
 } from '@/entities/widget';
 import { getPublicWidget, PUBLIC_WIDGET_MESSAGE_SOURCE } from '@/shared/api';
@@ -84,7 +85,9 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
     config: {
       ...payload.widget.config,
       palette: payload.widget.config?.palette ?? 'lavender',
-      paletteMode: payload.widget.config?.paletteMode ?? 'auto',
+      paletteMode: (payload.widget.config?.paletteMode === 'dark'
+        ? 'dark'
+        : 'light') as PaletteMode,
       grid: payload.widget.config?.grid ?? { columns: 2 },
     },
   };

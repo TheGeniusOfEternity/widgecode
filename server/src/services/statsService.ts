@@ -207,7 +207,7 @@ const configFor = (value: unknown): WidgetConfig => {
     return {
       sources: {},
       palette: 'lavender',
-      paletteMode: 'auto',
+      paletteMode: 'light',
       grid: { columns: 1 },
       renderFormat: 'iframe',
     };
@@ -216,7 +216,7 @@ const configFor = (value: unknown): WidgetConfig => {
     ...config,
     sources: config.sources ?? {},
     palette: config.palette ?? 'lavender',
-    paletteMode: config.paletteMode ?? 'auto',
+    paletteMode: config.paletteMode === 'dark' ? 'dark' : 'light',
     grid: config.grid ?? { columns: 1 },
     renderFormat: 'iframe',
   };

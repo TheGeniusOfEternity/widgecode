@@ -52,15 +52,6 @@
   --widget-surface: var(--widget-dark-surface);
 }
 
-@media (prefers-color-scheme: dark) {
-  .canvas[data-palette-mode='auto'] {
-    --widget-accent: var(--widget-dark-accent);
-    --widget-soft: var(--widget-dark-soft);
-    --widget-ink: var(--widget-dark-ink);
-    --widget-surface: var(--widget-dark-surface);
-  }
-}
-
 .blocks {
   display: grid;
   grid-template-columns: repeat(var(--widget-columns, 2), minmax(0, 1fr));

@@ -37,5 +37,5 @@ Rules:
    - `/w/<slug>?embed=1` (iframe content, real size)
    - `http://localhost:4000/api/public/widgets/<slug>/image.svg` (add `?locale=ru` to match a Russian UI)
    - `/w/<slug>` and the editor `/widgets/<id>` (scaled)
-3. Note known intentional differences: the SVG uses the light palette for `paletteMode: auto`, and its locale comes from `?locale=` rather than the app setting.
+3. Known intentional difference: the SVG locale comes from `?locale=` rather than the app setting.
 4. Finish with the `verify` skill.

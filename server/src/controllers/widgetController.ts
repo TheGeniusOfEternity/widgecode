@@ -349,7 +349,7 @@ export class WidgetController {
             config: block.config,
           })),
           palette: typeof config.palette === 'string' ? config.palette : 'lavender',
-          paletteMode: typeof config.paletteMode === 'string' ? config.paletteMode : 'auto',
+          paletteMode: config.paletteMode === 'dark' ? 'dark' : 'light',
           columns:
             config.grid && typeof config.grid === 'object'
               ? Number((config.grid as Record<string, unknown>).columns) || 1

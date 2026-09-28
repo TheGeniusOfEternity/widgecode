@@ -123,7 +123,9 @@ const getWidgetDimensions = (blocks: WidgetBlock[]) =>
 const normalizeWidget = (widget: Widget) => {
   const columns = MAX_COLUMNS;
   const legacySources = widget.config?.sources ?? {};
-  let changed = widget.config?.grid?.columns !== MAX_COLUMNS || !widget.config?.paletteMode;
+  const paletteMode: PaletteMode = widget.config?.paletteMode === 'dark' ? 'dark' : 'light';
+  let changed =
+    widget.config?.grid?.columns !== MAX_COLUMNS || widget.config?.paletteMode !== paletteMode;
   const blocks = [...widget.blocks]
     .sort((left, right) => left.position - right.position)
     .map((block, index) => {
@@ -154,7 +156,7 @@ const normalizeWidget = (widget: Widget) => {
       config: {
         ...widget.config,
         palette: widget.config?.palette ?? 'lavender',
-        paletteMode: widget.config?.paletteMode ?? 'auto',
+        paletteMode,
         grid: { columns },
         renderFormat: 'iframe' as const,
       },
@@ -1038,7 +1040,7 @@ const WidgetConfigPanel = ({
       <div className={styles.modeField}>
         <span>{t.palette}</span>
         <div className={styles.modeOptions}>
-          {(['light', 'dark', 'auto'] as PaletteMode[]).map((mode) => (
+          {(['light', 'dark'] as PaletteMode[]).map((mode) => (
             <button
               key={mode}
               type="button"
@@ -1050,7 +1052,7 @@ const WidgetConfigPanel = ({
                 }))
               }
             >
-              {mode === 'light' ? t.light : mode === 'dark' ? t.dark : t.auto}
+              {mode === 'light' ? t.light : t.dark}
             </button>
           ))}
         </div>

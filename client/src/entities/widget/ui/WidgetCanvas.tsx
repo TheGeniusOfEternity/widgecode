@@ -310,7 +310,7 @@ export const WidgetCanvasSkeleton = ({
 export const WidgetCanvas = ({
   blocks,
   palette,
-  paletteMode = 'auto',
+  paletteMode = 'light',
   columns = MAX_GRID_COLUMNS,
   width = WIDGET_WIDTH,
   height,
