@@ -13,6 +13,9 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Cached failed GitHub/LeetCode lookups for 60 seconds and shortened the SVG CDN cache for widgets with errors, so outages neither hammer external APIs nor stay pinned for 15 minutes.
+- Made adding a block and resizing its widget a single database transaction.
+- Pinned the server build output layout and added `typecheck:api` to CI so Vercel handlers can't silently lose `server/dist/src/app.js`.
 - Localized LeetCode ranking and contest rating labels in Russian and English.
 - Added live LeetCode contest rating data to rendered statistics.
 - Added skeleton cards for the initial widgets gallery load instead of showing the empty state prematurely.
@@ -21,6 +24,9 @@ All notable changes to this project are documented here.
 
 ### Security
 
+- Rate limits now key on the real client IP behind the Vercel proxy instead of one shared proxy IP.
+- Split auth rate limits: login, registration and OAuth stay strict; session refresh, `/me` and logout get a separate, higher limit.
+- Updated `vitest`, `morgan` and `qs` to fix moderate-severity advisories.
 - Resolved `deepmerge-ts` high-severity vulnerability via npm overrides (GHSA-ggr8-5vv4-36mx).
 
 ## [0.3.0] - 2026-08-02
