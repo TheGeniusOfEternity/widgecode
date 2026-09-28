@@ -66,7 +66,7 @@ const toCardData = (widget: Widget): WidgetCardData => {
     source,
     metric,
     accent: widget.config?.palette ?? 'lavender',
-    paletteMode: widget.config?.paletteMode ?? 'auto',
+    paletteMode: widget.config?.paletteMode === 'dark' ? 'dark' : 'light',
     public: widget.public,
     width: widget.width,
     height: widget.height,

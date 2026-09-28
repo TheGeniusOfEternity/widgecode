@@ -25,15 +25,17 @@ it('renders the shared widget canvas as SVG', () => {
       width: 600,
       height: 400,
       renderedBlocks: [{ id: 'block-1', type: 'text', position: 0, data: {} }],
-      showChrome: false,
     }),
   );
 
   expect(svg).toContain('<svg');
-  expect(svg).toContain('Build &lt;something&gt; worth sharing');
+  expect(svg).toContain('Build &lt;something&gt;');
+  expect(svg).toContain('sharing');
   expect(svg).toContain('widget-surface');
-  expect(svg).toContain('widget-shadow');
-  expect(svg).toContain('transform="translate(24 24)"');
+  // No drop shadow: it would tint the transparent corners around the rounded canvas.
+  expect(svg).not.toContain('<filter');
+  // Canvas padding 24 + block border 1 + block padding 20.
+  expect(svg).toContain('transform="translate(45 45)"');
 });
 
 it('scales the SVG viewport without changing the widget viewBox', () => {
@@ -85,7 +87,6 @@ it('inlines avatars as data URIs instead of external URLs', () => {
         },
       ],
       avatarDataUris: { 'block-1': 'data:image/png;base64,iVBORw0KGgo=' },
-      showChrome: false,
     }),
   );
 

@@ -1,6 +1,13 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 
-import { WidgetCanvas, WidgetCanvasSkeleton, type PublicWidgetResponse } from '@/entities/widget';
+import {
+  ScaledWidgetFrame,
+  WidgetCanvas,
+  WidgetCanvasSkeleton,
+  paletteTokens,
+  type PaletteMode,
+  type PublicWidgetResponse,
+} from '@/entities/widget';
 import { getPublicWidget, PUBLIC_WIDGET_MESSAGE_SOURCE } from '@/shared/api';
 import type { Locale } from '@/shared/locale/content';
 import { messages } from '@/shared/locale/content';
@@ -12,7 +19,7 @@ type PublicWidgetPageProps = {
   embed?: boolean;
 };
 
-const DEFAULT_WIDGET_DIMENSIONS = { width: 600, height: 400 };
+const DEFAULT_WIDGET_DIMENSIONS = { width: 600, height: 315 };
 
 const readDimension = (name: 'width' | 'height', fallback: number) => {
   const value = Number(new URLSearchParams(window.location.search).get(name));
@@ -63,12 +70,13 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
   if (!payload)
     return (
       <div className={`${styles.status} ${embed ? styles.embedStatus : ''}`}>
-        <WidgetCanvasSkeleton
-          embed={embed}
-          locale={locale}
-          width={initialDimensions.width}
-          height={initialDimensions.height}
-        />
+        {embed ? (
+          <WidgetCanvasSkeleton locale={locale} {...initialDimensions} />
+        ) : (
+          <ScaledWidgetFrame {...initialDimensions} elevated>
+            <WidgetCanvasSkeleton locale={locale} {...initialDimensions} />
+          </ScaledWidgetFrame>
+        )}
       </div>
     );
 
@@ -77,8 +85,10 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
     config: {
       ...payload.widget.config,
       palette: payload.widget.config?.palette ?? 'lavender',
-      paletteMode: payload.widget.config?.paletteMode ?? 'auto',
-      grid: payload.widget.config?.grid ?? { columns: 1 },
+      paletteMode: (payload.widget.config?.paletteMode === 'dark'
+        ? 'dark'
+        : 'light') as PaletteMode,
+      grid: payload.widget.config?.grid ?? { columns: 2 },
     },
   };
   const { rendered } = payload;
@@ -103,7 +113,6 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
       height={widget.height}
       renderedBlocks={rendered.blocks}
       locale={locale}
-      showChrome={!embed}
     />
   );
 
@@ -125,7 +134,14 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
           </div>
           <small>{new Date(widget.updatedAt).toLocaleDateString()}</small>
         </header>
-        {canvas}
+        <ScaledWidgetFrame
+          width={widget.width}
+          height={widget.height}
+          elevated
+          accent={paletteTokens[widget.config.palette]?.light.accent}
+        >
+          {canvas}
+        </ScaledWidgetFrame>
         <footer className={styles.publicFooter}>
           /{widget.slug} · cached {Math.round(rendered.cacheTtlSeconds / 60)} min
         </footer>

@@ -172,10 +172,7 @@ export const WidgetCard = ({
 }: WidgetCardProps) => {
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const palette = paletteTokens[widget.accent];
-  const useDarkPalette =
-    widget.paletteMode === 'dark' ||
-    (widget.paletteMode === 'auto' && document.documentElement.dataset.theme === 'dark');
-  const tokens = useDarkPalette ? palette.dark : palette.light;
+  const tokens = widget.paletteMode === 'dark' ? palette.dark : palette.light;
   const previewStyle = {
     '--accent-color': tokens.accent,
     '--accent-soft': tokens.soft,

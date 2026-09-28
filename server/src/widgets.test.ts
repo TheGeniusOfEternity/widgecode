@@ -328,3 +328,11 @@ it('inlines the GitHub avatar as a data URI in the public SVG image', async () =
 
   vi.unstubAllGlobals();
 });
+
+it('reads the removed auto palette mode as light', async () => {
+  const { widgetConfigSchema } = await import('@server/widgets/registry.js');
+
+  expect(widgetConfigSchema.parse({ paletteMode: 'auto' }).paletteMode).toBe('light');
+  expect(widgetConfigSchema.parse({}).paletteMode).toBe('light');
+  expect(widgetConfigSchema.safeParse({ paletteMode: 'sepia' }).success).toBe(false);
+});

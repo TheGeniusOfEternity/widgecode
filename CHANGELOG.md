@@ -11,8 +11,20 @@ All notable changes to this project are documented here.
 - Extracted shared widget SVG-rendering primitives for server-side export.
 - Added shared `languageColor` utility used by both client and server.
 
+### Changed
+
+- Removed the automatic palette mode; widgets are either light or dark, and existing auto widgets open as light.
+- Unified widget rendering: the editor, public page, iframe embed and SVG export now share one geometry and typography module, so widgets look identical everywhere.
+- The editor and public page render the widget at its real size and scale it to fit, instead of reflowing it to the screen width.
+- Removed the "live widget preview" header and footer from inside the widget on the editor and public page.
+- Stat values switch to compact notation (24.3K) when they do not fit their column; ratings are shown without decimals.
+
 ### Fixed
 
+- Fixed smaller block padding and larger fonts in SVG exports compared to the editor and iframe.
+- Fixed widget size differences between the editor, public page, iframe and SVG export caused by viewport-relative padding.
+- Removed the drop shadow that tinted the transparent corners of exported SVG and iframe widgets.
+- Localized GitHub and LeetCode block labels in the HTML widget.
 - Cached failed GitHub/LeetCode lookups for 60 seconds and shortened the SVG CDN cache for widgets with errors, so outages neither hammer external APIs nor stay pinned for 15 minutes.
 - Made adding a block and resizing its widget a single database transaction.
 - Pinned the server build output layout and added `typecheck:api` to CI so Vercel handlers can't silently lose `server/dist/src/app.js`.

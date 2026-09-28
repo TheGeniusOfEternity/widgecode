@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { MAX_BLOCK_HEIGHT, MAX_GRID_COLUMNS } from '@shared/widget/geometry.js';
+
 export const BLOCK_TYPES = ['text', 'github-stats', 'github-langs', 'leetcode-stats'] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -8,16 +10,20 @@ export type SourceType = (typeof SOURCE_TYPES)[number];
 
 export const PALETTE_IDS = ['lavender', 'midnight', 'mint', 'sunset', 'cobalt', 'paper'] as const;
 export type PaletteId = (typeof PALETTE_IDS)[number];
-export const PALETTE_MODES = ['light', 'dark', 'auto'] as const;
+export const PALETTE_MODES = ['light', 'dark'] as const;
 export type PaletteMode = (typeof PALETTE_MODES)[number];
 
 export const MAX_WIDGET_BLOCKS = 5;
-export const MAX_GRID_COLUMNS = 2;
+export { MAX_GRID_COLUMNS };
 
 export const blockTypeSchema = z.enum(BLOCK_TYPES);
 export const sourceTypeSchema = z.enum(SOURCE_TYPES);
 export const paletteSchema = z.enum(PALETTE_IDS);
-export const paletteModeSchema = z.enum(PALETTE_MODES);
+// Widgets saved before the 'auto' mode was removed are read as light.
+export const paletteModeSchema = z.preprocess(
+  (value) => (value === 'auto' ? 'light' : value),
+  z.enum(PALETTE_MODES),
+);
 
 export const blockLayoutSchema = z.object({
   x: z
@@ -27,7 +33,7 @@ export const blockLayoutSchema = z.object({
     .max(MAX_GRID_COLUMNS - 1),
   y: z.number().int().min(0).max(100),
   width: z.number().int().min(1).max(MAX_GRID_COLUMNS),
-  height: z.number().int().min(1).max(2),
+  height: z.number().int().min(1).max(MAX_BLOCK_HEIGHT),
 });
 
 export type BlockLayout = z.infer<typeof blockLayoutSchema>;
@@ -77,7 +83,7 @@ export const widgetConfigSchema = z.object({
     })
     .optional(),
   palette: paletteSchema.default('lavender'),
-  paletteMode: paletteModeSchema.default('auto'),
+  paletteMode: paletteModeSchema.default('light'),
   grid: z
     .object({ columns: z.number().int().min(1).max(MAX_GRID_COLUMNS) })
     .default({ columns: MAX_GRID_COLUMNS }),

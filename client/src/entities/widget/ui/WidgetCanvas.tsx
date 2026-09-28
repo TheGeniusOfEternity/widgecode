@@ -8,9 +8,19 @@ import type {
   RenderedBlock,
   WidgetBlock,
 } from '@/entities/widget/model';
-import { paletteTokens } from '@/entities/widget/model';
-import { languageColor } from '@shared/widget/WidgetCanvas';
-import { messages } from '@/shared/locale/content';
+import {
+  blockMetrics,
+  blockStyleVars,
+  canvasStyleVars,
+  getBlockLayout,
+} from '@/entities/widget/lib/canvasStyle';
+import {
+  MAX_GRID_COLUMNS,
+  WIDGET_WIDTH,
+  gridRows,
+  widgetDimensions,
+} from '@shared/widget/geometry';
+import { formatStatValue, languageColor, widgetLabels } from '@shared/widget/theme';
 import styles from '@/entities/widget/ui/WidgetCanvas.module.css';
 
 type WidgetLocale = 'ru' | 'en';
@@ -27,11 +37,10 @@ type WidgetCanvasProps = {
   selectedBlockId?: string;
   onSelectBlock?: (id: string) => void;
   locale?: WidgetLocale;
-  showChrome?: boolean;
 };
 
 const sampleData: Record<BlockType, Record<string, unknown>> = {
-  text: { text: 'Build something worth sharing.', align: 'left' },
+  text: {},
   'github-stats': {
     username: 'octocat',
     name: 'The Octocat',
@@ -58,38 +67,22 @@ const sampleData: Record<BlockType, Record<string, unknown>> = {
 const renderedData = (block: WidgetBlock, renderedBlocks?: RenderedBlock[]) =>
   renderedBlocks?.find((rendered) => rendered.id === block.id);
 
-const getBlockLayout = (block: WidgetBlock): BlockLayout => {
-  const value = block.config.layout;
-  if (!value || typeof value !== 'object') return { x: 0, y: 0, width: 1, height: 1 };
-  const layout = value as Partial<BlockLayout>;
-  return {
-    x: typeof layout.x === 'number' ? layout.x : 0,
-    y: typeof layout.y === 'number' ? layout.y : 0,
-    width: typeof layout.width === 'number' ? layout.width : 1,
-    height: typeof layout.height === 'number' ? layout.height : 1,
-  };
-};
-
 const PreviewState = ({
   locale,
   source,
 }: {
   locale: WidgetLocale;
-  source: 'github' | 'leetcode';
+  source: 'GitHub' | 'LeetCode';
 }) => {
-  const sourceLabel = source === 'github' ? 'GitHub' : 'LeetCode';
+  const labels = widgetLabels(locale);
   return (
     <div className={styles.previewState} role="status">
       <span className={styles.previewStateMark} aria-hidden="true">
         @
       </span>
       <span className={styles.previewStateCopy}>
-        <strong>{locale === 'ru' ? 'Добавьте username' : 'Add a username'}</strong>
-        <span>
-          {locale === 'ru'
-            ? `Укажите ${sourceLabel} username в настройках блока`
-            : `Add a ${sourceLabel} username in block settings`}
-        </span>
+        <strong>{labels.addUsername}</strong>
+        <span>{labels.addUsernameHint(source)}</span>
       </span>
     </div>
   );
@@ -108,8 +101,10 @@ const WidgetBlockSkeleton = () => (
   </div>
 );
 
-const formatNumber = (value: number | undefined) =>
-  value === undefined ? '—' : value.toLocaleString();
+const numberFormatter = new Intl.NumberFormat('en-US');
+
+const formatNumber = (value: unknown, fallback = '—') =>
+  typeof value === 'number' && Number.isFinite(value) ? numberFormatter.format(value) : fallback;
 
 type BlockData = {
   username?: string;
@@ -124,12 +119,22 @@ type BlockData = {
   languages?: { name: string; percentage: number }[];
 };
 
-const Stat = ({ label, value }: { label: string; value: string | number }) => (
-  <div className={styles.stat}>
-    <strong>{typeof value === 'number' ? formatNumber(value) : value}</strong>
-    <span>{label}</span>
-  </div>
-);
+type StatItem = { label: string; value: unknown };
+
+const StatsRow = ({ items, block }: { items: StatItem[]; block: WidgetBlock }) => {
+  const { contentWidth, typography: t } = blockMetrics(getBlockLayout(block));
+  const columnWidth = (contentWidth - t.columnGap * (items.length - 1)) / Math.max(items.length, 1);
+  return (
+    <div className={styles.statsRow} style={{ '--stat-count': items.length } as CSSProperties}>
+      {items.map((item) => (
+        <div className={styles.stat} key={item.label}>
+          <strong>{formatStatValue(item.value, columnWidth, t.statValue)}</strong>
+          <span>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export const WidgetBlockContent = ({
   block,
@@ -140,12 +145,12 @@ export const WidgetBlockContent = ({
   rendered?: RenderedBlock;
   locale?: WidgetLocale;
 }) => {
-  const t = messages[locale];
+  const labels = widgetLabels(locale);
   if (rendered?.error) return <p className={styles.error}>{rendered.error}</p>;
   const source = block.type.startsWith('github')
-    ? 'github'
+    ? 'GitHub'
     : block.type.startsWith('leetcode')
-      ? 'leetcode'
+      ? 'LeetCode'
       : null;
   const username = typeof block.config.username === 'string' ? block.config.username.trim() : '';
   if (source && rendered?.data === undefined && !username) {
@@ -161,14 +166,26 @@ export const WidgetBlockContent = ({
       block.config.align === 'center' || block.config.align === 'right'
         ? block.config.align
         : 'left';
+    const text = typeof block.config.text === 'string' ? block.config.text.trim() : '';
     return (
       <p className={styles.textBlock} style={{ textAlign: align }}>
-        {String(block.config.text || sampleData.text.text)}
+        {text || labels.defaultText}
       </p>
     );
   }
 
   if (block.type === 'github-stats') {
+    const stats = [
+      block.config.showRepositories !== false
+        ? { label: labels.repositories, value: data.publicRepositories }
+        : null,
+      block.config.showFollowers !== false
+        ? { label: labels.followers, value: data.followers }
+        : null,
+      block.config.showFollowing !== false
+        ? { label: labels.following, value: data.following }
+        : null,
+    ].filter((item) => item !== null);
     return (
       <div className={styles.statsBlock}>
         <div className={styles.blockHeading}>
@@ -176,90 +193,73 @@ export const WidgetBlockContent = ({
             {data.avatarUrl && <img src={data.avatarUrl} alt="" />}
           </div>
           <div>
-            <strong>{String(data.name || 'GitHub profile')}</strong>
-            <span>@{String(data.username || 'username')}</span>
+            <strong>{data.name || labels.githubProfile}</strong>
+            <span>@{data.username || username || 'username'}</span>
           </div>
         </div>
-        <div className={styles.statsRow}>
-          {block.config.showRepositories !== false && (
-            <Stat label="Repos" value={data.publicRepositories ?? 42} />
-          )}
-          {block.config.showFollowers !== false && (
-            <Stat label="Followers" value={data.followers ?? 4_321} />
-          )}
-          {block.config.showFollowing !== false && (
-            <Stat label="Following" value={data.following ?? 12} />
-          )}
-        </div>
+        {stats.length > 0 && <StatsRow items={stats} block={block} />}
       </div>
     );
   }
 
   if (block.type === 'github-langs') {
-    const languages = data.languages ?? [];
+    const languages = (data.languages ?? []).slice(0, 8);
     return (
-      <div className={styles.languageBlock}>
+      <div className={styles.statsBlock}>
         <div className={styles.blockTitleRow}>
-          <strong>Languages</strong>
-          <span>top {languages.length || 4}</span>
+          <strong>{labels.languages}</strong>
+          <span>
+            {labels.top} {languages.length}
+          </span>
         </div>
         <div className={styles.languageBar}>
-          {languages.map((language) => {
-            const color = languageColor(language.name);
-            return (
-              <span
-                key={language.name}
-                style={{
-                  flex: `${Math.max(language.percentage, 0)} 0 0%`,
-                  background: color,
-                }}
-              />
-            );
-          })}
+          {languages.map((language) => (
+            <span
+              key={language.name}
+              style={{
+                width: `${Math.max(language.percentage, 0)}%`,
+                background: languageColor(language.name),
+              }}
+            />
+          ))}
         </div>
         <div className={styles.languageList}>
-          {languages.map((language) => {
-            const color = languageColor(language.name);
-            return (
-              <span key={language.name}>
-                <i style={{ background: color }} /> {language.name} <b>{language.percentage}%</b>
-              </span>
-            );
-          })}
+          {languages.map((language) => (
+            <span key={language.name}>
+              <i style={{ background: languageColor(language.name) }} />
+              <span>{language.name}</span>
+              <b>{language.percentage}%</b>
+            </span>
+          ))}
         </div>
       </div>
     );
   }
 
-  const solved = data.solved;
-  const hasLiveData = rendered?.data !== undefined;
+  const solved = data.solved ?? {};
+  const stats = [
+    { label: labels.solved, value: solved.all },
+    block.config.showRanking !== false ? { label: labels.ranking, value: data.ranking } : null,
+    block.config.showContestRating !== false
+      ? { label: labels.contestRating, value: data.contestRating }
+      : null,
+  ].filter((item) => item !== null);
   return (
     <div className={styles.statsBlock}>
       <div className={styles.blockTitleRow}>
-        <strong>LeetCode profile</strong>
-        <span>@{String(data.username || 'username')}</span>
+        <strong>{labels.leetcodeProfile}</strong>
+        <span>@{data.username || username || 'username'}</span>
       </div>
-      <div className={styles.statsRow}>
-        <Stat label="Solved" value={solved?.all ?? (hasLiveData ? 0 : 312)} />
-        {block.config.showRanking !== false && (
-          <Stat label={t.leetcodeRanking} value={data.ranking ?? (hasLiveData ? '—' : 18_240)} />
-        )}
-        {block.config.showContestRating !== false && (
-          <Stat
-            label={t.leetcodeContestRating}
-            value={data.contestRating ?? (hasLiveData ? '—' : 1_726)}
-          />
-        )}
-      </div>
+      <StatsRow items={stats} block={block} />
       <div className={styles.difficultyRow}>
         <span>
-          <i className={styles.easy} /> Easy {solved?.easy ?? 148}
+          <i className={styles.easy} /> {labels.easy} {formatNumber(solved.easy, '0')}
         </span>
         <span>
-          <i className={styles.medium} /> Medium {solved?.medium ?? 132}
+          <i className={styles.medium} /> {labels.medium} {formatNumber(solved.medium, '0')}
         </span>
         <span>
-          <i className={styles.hard} /> Hard {solved?.hard ?? 32}
+          <i className={styles.hard} /> {labels.hard} {formatNumber(solved.hard, '0')}
         </span>
       </div>
     </div>
@@ -267,81 +267,66 @@ export const WidgetBlockContent = ({
 };
 
 type WidgetCanvasSkeletonProps = {
-  embed?: boolean;
   locale?: WidgetLocale;
   width?: number;
   height?: number;
 };
 
+const skeletonLayouts: BlockLayout[] = [
+  { x: 0, y: 0, width: 1, height: 1 },
+  { x: 1, y: 0, width: 1, height: 1 },
+];
+
 export const WidgetCanvasSkeleton = ({
-  embed = false,
   locale = 'en',
-  width = 600,
-  height = 400,
+  width = WIDGET_WIDTH,
+  height = widgetDimensions(skeletonLayouts).height,
 }: WidgetCanvasSkeletonProps) => (
   <div
-    className={`${styles.canvas} ${styles.canvasSkeleton} ${embed ? styles.canvasSkeletonEmbed : ''}`}
-    data-show-chrome={!embed}
-    style={
-      {
-        '--widget-width': `${width}px`,
-        '--widget-height': `${height}px`,
-      } as CSSProperties
-    }
+    className={`${styles.canvas} ${styles.canvasSkeleton}`}
+    style={canvasStyleVars('lavender', { width, height })}
     role="status"
     aria-label={locale === 'ru' ? 'Загрузка виджета' : 'Loading widget'}
   >
-    {!embed && (
-      <div className={styles.canvasHeader} aria-hidden="true">
-        <span className={styles.brandDot} />
-        <span className={`${styles.skeletonLine} ${styles.skeletonChromeLabel}`} />
-      </div>
-    )}
-    <div className={styles.blocks} data-columns="1" aria-hidden="true">
-      <article className={`${styles.block} ${styles.skeletonBlock}`}>
-        <WidgetBlockSkeleton />
-      </article>
-      <article className={`${styles.block} ${styles.skeletonBlock}`}>
-        <WidgetBlockSkeleton />
-      </article>
+    <div className={styles.blocks} aria-hidden="true">
+      {skeletonLayouts.map((layout) => (
+        <article
+          className={`${styles.block} ${styles.skeletonBlock}`}
+          key={`${layout.x}:${layout.y}`}
+          style={blockStyleVars(layout, width)}
+        >
+          <WidgetBlockSkeleton />
+        </article>
+      ))}
     </div>
-    {!embed && (
-      <div className={styles.canvasFooter} aria-hidden="true">
-        <span className={`${styles.skeletonLine} ${styles.skeletonFooterLabel}`} />
-        <span className={`${styles.skeletonLine} ${styles.skeletonFooterLabel}`} />
-      </div>
-    )}
   </div>
 );
 
+/**
+ * HTML widget renderer used by the editor, the public page and the iframe embed. It always
+ * renders at the stored widget size; wrap it in `ScaledWidgetFrame` to fit smaller containers.
+ * Geometry must stay in sync with the SVG export in `@shared/widget/WidgetCanvas`.
+ */
 export const WidgetCanvas = ({
   blocks,
   palette,
-  paletteMode = 'auto',
-  columns = 1,
-  width,
+  paletteMode = 'light',
+  columns = MAX_GRID_COLUMNS,
+  width = WIDGET_WIDTH,
   height,
   renderedBlocks,
   interactive = false,
   selectedBlockId,
   onSelectBlock,
   locale = 'en',
-  showChrome = true,
 }: WidgetCanvasProps) => {
-  const tokens = paletteTokens[palette];
-  const gridColumns = Math.max(1, Math.min(columns, 2));
+  const gridColumns = Math.max(1, Math.min(columns, MAX_GRID_COLUMNS));
+  const layouts = blocks.map(getBlockLayout);
+  const canvasHeight = height ?? widgetDimensions(layouts, width).height;
   const style = {
-    '--widget-light-accent': tokens.light.accent,
-    '--widget-light-soft': tokens.light.soft,
-    '--widget-light-ink': tokens.light.ink,
-    '--widget-light-surface': tokens.light.surface,
-    '--widget-dark-accent': tokens.dark.accent,
-    '--widget-dark-soft': tokens.dark.soft,
-    '--widget-dark-ink': tokens.dark.ink,
-    '--widget-dark-surface': tokens.dark.surface,
+    ...canvasStyleVars(palette, { width, height: canvasHeight }),
     '--widget-columns': gridColumns,
-    '--widget-width': width ? `${width}px` : undefined,
-    '--widget-height': height ? `${height}px` : undefined,
+    '--widget-rows': gridRows(layouts),
   } as CSSProperties;
 
   const handleSelect = (event: MouseEvent<HTMLElement>, id: string) => {
@@ -355,42 +340,26 @@ export const WidgetCanvas = ({
       className={styles.canvas}
       style={style}
       data-palette-mode={paletteMode}
-      data-show-chrome={showChrome}
+      data-interactive={interactive}
     >
-      {showChrome && (
-        <div className={styles.canvasHeader}>
-          <span className={styles.brandDot} />
-          <span>live widget preview</span>
-        </div>
-      )}
-      <div className={styles.blocks} data-columns={gridColumns}>
-        {blocks.length === 0 && (
-          <p className={styles.empty}>Add a block to start shaping your widget.</p>
-        )}
-        {blocks.map((block) => (
-          <article
-            className={`${styles.block} ${selectedBlockId === block.id ? styles.selected : ''}`}
-            key={block.id}
-            style={{
-              gridColumn: `${getBlockLayout(block).x + 1} / span ${getBlockLayout(block).width}`,
-              gridRow: `${getBlockLayout(block).y + 1} / span ${getBlockLayout(block).height}`,
-            }}
-            onClick={(event) => handleSelect(event, block.id)}
-          >
-            <WidgetBlockContent
-              block={block}
-              rendered={renderedData(block, renderedBlocks)}
-              locale={locale}
-            />
-          </article>
-        ))}
-      </div>
-      {showChrome && (
-        <div className={styles.canvasFooter}>
-          <span>
-            {blocks.length} block{blocks.length === 1 ? '' : 's'}
-          </span>
-          <span>updates every 15 min</span>
+      {blocks.length === 0 ? (
+        <p className={styles.empty}>{widgetLabels(locale).empty}</p>
+      ) : (
+        <div className={styles.blocks}>
+          {blocks.map((block, index) => (
+            <article
+              className={`${styles.block} ${selectedBlockId === block.id ? styles.selected : ''}`}
+              key={block.id}
+              style={blockStyleVars(layouts[index], width, gridColumns)}
+              onClick={(event) => handleSelect(event, block.id)}
+            >
+              <WidgetBlockContent
+                block={block}
+                rendered={renderedData(block, renderedBlocks)}
+                locale={locale}
+              />
+            </article>
+          ))}
         </div>
       )}
     </div>

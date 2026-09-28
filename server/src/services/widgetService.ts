@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 
 import type { Prisma } from '@prisma/client';
 
+import { widgetDimensions as sharedWidgetDimensions } from '@shared/widget/geometry.js';
+
 import { prisma } from '@server/lib/prisma.js';
 import { AppError } from '@server/lib/errors.js';
 import {
@@ -82,25 +84,8 @@ const layoutFromBlock = (block: { position: number; config: unknown }): BlockLay
   return result.success ? result.data : { x: 0, y: block.position, width: 1, height: 1 };
 };
 
-const WIDGET_WIDTH = 600;
-const WIDGET_GAP = 18;
-
-const widgetDimensions = (blocks: { position: number; config: unknown }[]) => {
-  const rows = Math.max(
-    1,
-    ...blocks.map((block) => {
-      const layout = layoutFromBlock(block);
-      return layout.y + layout.height;
-    }),
-  );
-  const padding = Math.min(34, Math.max(20, WIDGET_WIDTH * 0.04));
-  const cellWidth =
-    (WIDGET_WIDTH - padding * 2 - WIDGET_GAP * (MAX_GRID_COLUMNS - 1)) / MAX_GRID_COLUMNS;
-  return {
-    width: WIDGET_WIDTH,
-    height: Math.min(1200, Math.round(rows * cellWidth + WIDGET_GAP * (rows - 1) + padding * 2)),
-  };
-};
+const widgetDimensions = (blocks: { position: number; config: unknown }[]) =>
+  sharedWidgetDimensions(blocks.map(layoutFromBlock));
 
 const normalizeBlockConfig = (type: BlockType, config: unknown, layout?: BlockLayout) => {
   const input = config && typeof config === 'object' ? (config as Record<string, unknown>) : {};
