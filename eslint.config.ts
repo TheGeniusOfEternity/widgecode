@@ -13,6 +13,7 @@ export default tseslint.config(
       'node_modules/**',
       'coverage/**',
       '.opencode/**',
+      '.claude/**',
       'prompts/**',
     ],
   },
