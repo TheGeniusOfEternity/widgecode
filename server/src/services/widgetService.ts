@@ -292,13 +292,15 @@ export class WidgetService {
       width: 1,
       height: 1,
     });
-    const created = await prisma.block.create({
-      data: { widgetId, type: input.type, position, config: toJson(normalizedConfig) },
-    });
-    await prisma.widget.update({
-      where: { id: widgetId },
-      data: widgetDimensions([...widget.blocks, created]),
-    });
+    const [created] = await prisma.$transaction([
+      prisma.block.create({
+        data: { widgetId, type: input.type, position, config: toJson(normalizedConfig) },
+      }),
+      prisma.widget.update({
+        where: { id: widgetId },
+        data: widgetDimensions([...widget.blocks, { position, config: normalizedConfig }]),
+      }),
+    ]);
     return created;
   };
 

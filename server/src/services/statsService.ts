@@ -7,29 +7,47 @@ import {
 } from '@server/widgets/registry.js';
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
+// Failed lookups (unknown user, rate limit, outage) are cached briefly so public widgets that
+// keep being viewed don't hammer the external API while it is failing.
+const ERROR_CACHE_TTL_MS = 60 * 1000;
 const CACHE_MAX_ENTRIES = 500;
 
-type CacheEntry = { expiresAt: number; value: unknown };
+type CacheEntry = { expiresAt: number } & ({ value: unknown } | { error: unknown });
 const responseCache = new Map<string, CacheEntry>();
 
-const getCached = async <T>(key: string, loader: () => Promise<T>) => {
+const storeEntry = (key: string, entry: CacheEntry) => {
   const now = Date.now();
-  const cached = responseCache.get(key);
-  if (cached && cached.expiresAt > now) return cached.value as T;
-  if (cached) responseCache.delete(key);
-
-  const value = await loader();
   if (responseCache.size >= CACHE_MAX_ENTRIES) {
-    for (const [entryKey, entry] of responseCache) {
-      if (entry.expiresAt <= now) responseCache.delete(entryKey);
+    for (const [entryKey, cached] of responseCache) {
+      if (cached.expiresAt <= now) responseCache.delete(entryKey);
     }
     if (responseCache.size >= CACHE_MAX_ENTRIES) {
       const oldestKey = responseCache.keys().next().value;
       if (oldestKey) responseCache.delete(oldestKey);
     }
   }
-  responseCache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
-  return value;
+  responseCache.set(key, entry);
+};
+
+const getCached = async <T>(key: string, loader: () => Promise<T>) => {
+  const now = Date.now();
+  const cached = responseCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    if ('error' in cached) throw cached.error;
+    return cached.value as T;
+  }
+  if (cached) responseCache.delete(key);
+
+  try {
+    const value = await loader();
+    storeEntry(key, { expiresAt: Date.now() + CACHE_TTL_MS, value });
+    return value;
+  } catch (error) {
+    if (error instanceof AppError) {
+      storeEntry(key, { expiresAt: Date.now() + ERROR_CACHE_TTL_MS, error });
+    }
+    throw error;
+  }
 };
 
 const fetchJson = async <T>(
@@ -278,7 +296,11 @@ export const renderWidgetStats = async (widget: {
     }),
   );
 
-  return { blocks, cacheTtlSeconds: CACHE_TTL_MS / 1000 };
+  const hasErrors = blocks.some((block) => 'error' in block && block.error);
+  return {
+    blocks,
+    cacheTtlSeconds: (hasErrors ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS) / 1000,
+  };
 };
 
 export const clearStatsCache = () => responseCache.clear();
