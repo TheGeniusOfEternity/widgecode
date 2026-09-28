@@ -26,6 +26,7 @@ All notable changes to this project are documented here.
 
 - Rate limits now key on the real client IP behind the Vercel proxy instead of one shared proxy IP.
 - Split auth rate limits: login, registration and OAuth stay strict; session refresh, `/me` and logout get a separate, higher limit.
+- Yandex sign-in no longer links to an existing email/password account with the same email (which allowed pre-registered account takeover); such users get a clear message to sign in with their password.
 - Updated `vitest`, `morgan` and `qs` to fix moderate-severity advisories.
 - Resolved `deepmerge-ts` high-severity vulnerability via npm overrides (GHSA-ggr8-5vv4-36mx).
 
