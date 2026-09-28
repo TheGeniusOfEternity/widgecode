@@ -46,7 +46,8 @@ const sharedBlockFields = {
 
 const blockSchemas: Record<BlockType, z.ZodType> = {
   text: z.object({
-    text: z.string().trim().min(1).max(500),
+    // Empty text is allowed while editing; both renderers show the default text instead.
+    text: z.string().trim().max(500),
     align: z.enum(['left', 'center', 'right']).default('left'),
     ...sharedBlockFields,
   }),

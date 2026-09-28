@@ -167,8 +167,6 @@ export class WidgetService {
       source?: 'github' | 'leetcode';
       username?: string;
       presetId?: string;
-      width?: number;
-      height?: number;
     },
   ) => {
     const preset = input.presetId
@@ -228,8 +226,6 @@ export class WidgetService {
     widgetId: string,
     input: {
       title?: string;
-      width?: number;
-      height?: number;
       public?: boolean;
       config?: unknown;
     },
@@ -237,8 +233,6 @@ export class WidgetService {
     const existing = await ensureWidget(userId, widgetId);
     const data: Prisma.WidgetUpdateInput = {};
     if (input.title !== undefined) data.title = input.title.trim();
-    if (input.width !== undefined) data.width = input.width;
-    if (input.height !== undefined) data.height = input.height;
     if (input.public !== undefined) data.public = input.public;
     const nextConfig = normalizeConfig(
       input.config ?? existing.config,

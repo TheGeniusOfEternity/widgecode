@@ -128,8 +128,6 @@ export const useWidgetEditor = ({
         await Promise.all(current.blocks.map((block) => updateBlock(block.id, block.config)));
         const saved = await updateWidget(current.id, {
           title: current.title,
-          width: current.width,
-          height: current.height,
           public: publish || current.public,
           config: current.config,
         });

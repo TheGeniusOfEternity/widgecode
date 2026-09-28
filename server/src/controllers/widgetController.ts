@@ -57,14 +57,11 @@ const createWidgetSchema = z.object({
   source: sourceTypeSchema.optional(),
   username: z.string().trim().max(100).optional(),
   presetId: presetIdSchema.optional(),
-  width: z.number().int().min(280).max(1600).optional(),
-  height: z.number().int().min(160).max(1200).optional(),
 });
 
 const updateWidgetSchema = z.object({
+  // Size is derived from the block layout on the server; clients can't set it.
   title: z.string().trim().min(1).max(80).optional(),
-  width: z.number().int().min(280).max(1600).optional(),
-  height: z.number().int().min(160).max(1200).optional(),
   public: z.boolean().optional(),
   config: widgetConfigSchema.partial().optional(),
 });
@@ -312,7 +309,9 @@ export class WidgetController {
         res.status(404).json({ error: 'Public widget not found' });
         return;
       }
-      res.json({ widget, rendered: await renderWidgetStats(widget) });
+      // Public payload: never expose the owner's id.
+      const { userId, ...publicWidget } = widget;
+      res.json({ widget: publicWidget, rendered: await renderWidgetStats(widget) });
     } catch (error) {
       next(error);
     }

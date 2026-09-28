@@ -1,10 +1,10 @@
 import type { Widget, WidgetBlock } from '@/entities/widget/model';
 import {
-  canPlaceBlock,
   dragGridRows,
-  findPlacement,
+  getLayout,
+  moveBlock,
   normalizeWidget,
-  withBlockLayout,
+  placeBlock,
 } from '@/pages/widget-editor/model/layout';
 
 const block = (id: string, layout: unknown, extra: Partial<WidgetBlock> = {}): WidgetBlock => ({
@@ -34,51 +34,104 @@ const widgetWith = (blocks: WidgetBlock[], config: Partial<Widget['config']> = {
   blocks,
 });
 
-describe('canPlaceBlock', () => {
-  const widget = widgetWith([
+const layouts = (widget: Widget) =>
+  Object.fromEntries(widget.blocks.map((item) => [item.id, getLayout(item)]));
+
+describe('placeBlock', () => {
+  // A B
+  // C D
+  const grid = widgetWith([
     block('a', { x: 0, y: 0, width: 1, height: 1 }),
-    block('b', { x: 1, y: 0, width: 1, height: 2 }),
+    block('b', { x: 1, y: 0, width: 1, height: 1 }),
+    block('c', { x: 0, y: 1, width: 1, height: 1 }),
+    block('d', { x: 1, y: 1, width: 1, height: 1 }),
   ]);
 
-  it('rejects overlaps and out-of-grid layouts', () => {
-    expect(canPlaceBlock(widget, 'a', { x: 1, y: 1, width: 1, height: 1 })).toBe(false);
-    expect(canPlaceBlock(widget, 'a', { x: 1, y: 2, width: 2, height: 1 })).toBe(false);
+  it('keeps a resized block in place and pushes the blocks below it down', () => {
+    expect(layouts(placeBlock(grid, 'b', { x: 1, y: 0, width: 1, height: 2 }))).toEqual({
+      a: { x: 0, y: 0, width: 1, height: 1 },
+      b: { x: 1, y: 0, width: 1, height: 2 },
+      c: { x: 0, y: 1, width: 1, height: 1 },
+      d: { x: 1, y: 2, width: 1, height: 1 },
+    });
   });
 
-  it('ignores the block being moved', () => {
-    expect(canPlaceBlock(widget, 'b', { x: 1, y: 1, width: 1, height: 1 })).toBe(true);
-    expect(canPlaceBlock(widget, 'a', { x: 0, y: 1, width: 1, height: 2 })).toBe(true);
+  it('cascades pushes when a block grows to the full width', () => {
+    expect(layouts(placeBlock(grid, 'a', { x: 0, y: 0, width: 2, height: 1 }))).toEqual({
+      a: { x: 0, y: 0, width: 2, height: 1 },
+      b: { x: 1, y: 1, width: 1, height: 1 },
+      c: { x: 0, y: 1, width: 1, height: 1 },
+      d: { x: 1, y: 2, width: 1, height: 1 },
+    });
+  });
+
+  it('shifts a block in the right column left when it grows wider than the grid allows', () => {
+    const next = layouts(placeBlock(grid, 'b', { x: 1, y: 0, width: 2, height: 1 }));
+    expect(next.b).toEqual({ x: 0, y: 0, width: 2, height: 1 });
+    expect(next.a).toEqual({ x: 0, y: 1, width: 1, height: 1 });
+  });
+
+  it('closes the gap when a block shrinks back', () => {
+    const grown = placeBlock(grid, 'b', { x: 1, y: 0, width: 1, height: 2 });
+    expect(layouts(placeBlock(grown, 'b', { x: 1, y: 0, width: 1, height: 1 }))).toEqual(
+      layouts(grid),
+    );
+  });
+
+  it('swaps places when a block is dropped onto an occupied cell below it', () => {
+    expect(layouts(placeBlock(grid, 'a', { x: 0, y: 1, width: 1, height: 1 }))).toMatchObject({
+      a: { x: 0, y: 1 },
+      c: { x: 0, y: 0 },
+    });
+  });
+
+  it('swaps places when a block is dropped onto an occupied cell above it', () => {
+    expect(layouts(placeBlock(grid, 'd', { x: 1, y: 0, width: 1, height: 1 }))).toMatchObject({
+      d: { x: 1, y: 0 },
+      b: { x: 1, y: 1 },
+    });
+  });
+
+  it('lifts a block dropped into an empty row below the others', () => {
+    expect(layouts(placeBlock(grid, 'a', { x: 0, y: 2, width: 1, height: 1 }))).toMatchObject({
+      c: { x: 0, y: 0 },
+      a: { x: 0, y: 1 },
+    });
+  });
+
+  it('leaves untouched blocks as the same objects', () => {
+    const next = placeBlock(grid, 'b', { x: 1, y: 0, width: 1, height: 2 });
+    expect(next.blocks[0]).toBe(grid.blocks[0]);
+    expect(next.blocks[2]).toBe(grid.blocks[2]);
   });
 });
 
-describe('findPlacement', () => {
-  it('keeps the preferred cell when it is free', () => {
-    const widget = widgetWith([block('a', { x: 0, y: 0, width: 1, height: 1 })]);
-    expect(findPlacement(widget, 'a', 2, 1, 0, 0)).toEqual({ x: 0, y: 0, width: 2, height: 1 });
+describe('moveBlock', () => {
+  const grid = widgetWith([
+    block('a', { x: 0, y: 0, width: 1, height: 1 }),
+    block('b', { x: 1, y: 0, width: 1, height: 1 }),
+    block('c', { x: 0, y: 1, width: 1, height: 2 }),
+  ]);
+
+  it('swaps two blocks of the same size', () => {
+    expect(layouts(moveBlock(grid, 'a', { x: 1, y: 0 }))).toMatchObject({
+      a: { x: 1, y: 0 },
+      b: { x: 0, y: 0 },
+      c: { x: 0, y: 1 },
+    });
   });
 
-  it('moves a grown block below the blocks it would cover', () => {
-    const widget = widgetWith([
-      block('a', { x: 0, y: 0, width: 1, height: 1 }),
-      block('b', { x: 1, y: 0, width: 1, height: 1 }),
-    ]);
-    expect(findPlacement(widget, 'a', 2, 1, 0, 0)).toEqual({ x: 0, y: 1, width: 2, height: 1 });
+  it('pushes blocks of a different size instead of swapping', () => {
+    expect(layouts(moveBlock(grid, 'b', { x: 0, y: 1 }))).toMatchObject({
+      b: { x: 0, y: 1 },
+      c: { x: 0, y: 2 },
+    });
   });
 });
 
 it('offers one spare drop row below the lowest block', () => {
   expect(dragGridRows(widgetWith([]))).toBe(2);
   expect(dragGridRows(widgetWith([block('a', { x: 0, y: 1, width: 1, height: 2 })]))).toBe(4);
-});
-
-it('updates one block layout without touching the others', () => {
-  const widget = widgetWith([
-    block('a', { x: 0, y: 0, width: 1, height: 1 }),
-    block('b', { x: 1, y: 0, width: 1, height: 1 }),
-  ]);
-  const next = withBlockLayout(widget, 'b', { x: 0, y: 1, width: 2, height: 1 });
-  expect(next.blocks[0]).toBe(widget.blocks[0]);
-  expect(next.blocks[1].config.layout).toEqual({ x: 0, y: 1, width: 2, height: 1 });
 });
 
 describe('normalizeWidget', () => {
@@ -119,7 +172,7 @@ describe('normalizeWidget', () => {
       username: 'octocat',
       layout: { x: 1, y: 0, width: 1, height: 2 },
     });
-    expect(widget.blocks[1].config.layout).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+    expect(widget.blocks[1].config.layout).toEqual({ x: 0, y: 1, width: 1, height: 1 });
     expect(widget.height).toBe(600);
   });
 });
