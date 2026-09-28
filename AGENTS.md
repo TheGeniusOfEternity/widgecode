@@ -76,8 +76,8 @@ Server imports must use `.js` extensions (NodeNext).
 - **Block types are defined twice.** Server `widgets/registry.ts` (zod schemas, presets) and client `entities/widget/model/{types,registry}.ts` (labels, ru/en descriptions). Adding a block type touches both plus `statsService` and both canvases — use the `add-block-type` skill.
 - Limits: `MAX_WIDGET_BLOCKS = 5` in the registry; `MAX_GRID_COLUMNS = 2` and block height ≤ 2 in shared `geometry.ts` (re-exported by the registry). Layout validation (bounds + no overlap) runs in `widgetService.validateLayouts`.
 - Widget width is currently fixed at 600 and height is recomputed from rows by `widgetDimensions` on every update — client-supplied `width`/`height` are ignored.
-- `statsService` and the avatar cache are per-process in-memory caches; on Vercel each cold instance starts empty.
-- `api/*.ts` import from `server/dist/src/app.js`. That path depends on the server `tsconfig.json` `include` (which contains `vitest.config.ts`, making `rootDir` = `server/`). Changing `include` can silently move the output and break production.
+- `statsService` and the avatar cache are per-process in-memory caches; on Vercel each cold instance starts empty. Successful lookups are cached 15 min, failed ones 60 s; the public SVG `Cache-Control` follows the same TTL. Rate limits (`express-rate-limit`, memory store) are also per instance; `trust proxy` is enabled on Vercel so limits are per client IP.
+- `api/*.ts` import from `server/dist/src/app.js`. `server/tsconfig.build.json` pins `rootDir: "."` to keep that path stable, and CI runs `typecheck:api` to catch breakage.
 - Auth: short-lived access token in memory (Authorization: Bearer), rotating refresh token in an httpOnly cookie scoped to `/api/auth`, sessions stored hashed in `AuthSession`. Yandex OAuth returns the access token in the URL hash of `/auth/callback`.
 - Errors: throw `AppError(status, message)` from services; controllers pass errors to `next()`; `errorMiddleware` maps them. Non-AppError → 500 with a generic message.
 - All user-visible strings are bilingual (ru/en). Add both.

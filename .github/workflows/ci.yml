@@ -43,5 +43,8 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Typecheck Vercel API handlers
+        run: npm run typecheck:api
+
       - name: Audit high vulnerabilities
         run: npm audit --audit-level=high
