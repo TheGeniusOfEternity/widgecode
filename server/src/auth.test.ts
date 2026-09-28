@@ -100,3 +100,63 @@ it('rotates a refresh session and revokes it on logout', async () => {
   await agent.post('/api/auth/logout').expect(200, { ok: true });
   expect(prismaMocks.authSession.updateMany).toHaveBeenCalled();
 });
+
+describe('Yandex OAuth callback', () => {
+  const yandexProfile = { id: 'ya-1', default_email: 'Person@Example.com', display_name: 'Person' };
+
+  beforeEach(() => {
+    process.env.YANDEX_CLIENT_ID = 'client';
+    process.env.YANDEX_CLIENT_SECRET = 'secret';
+    process.env.YANDEX_REDIRECT_URI = 'http://localhost:4000/api/auth/yandex/callback';
+    process.env.CLIENT_URL = 'http://localhost:5173';
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'ya-token' }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => yandexProfile }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const callback = () =>
+    request(app)
+      .get('/api/auth/yandex/callback?state=state-1&code=code-1')
+      .set('Cookie', 'widgecode_oauth_state=state-1');
+
+  it('does not link a Yandex identity to an existing email account', async () => {
+    prismaMocks.user.findUnique.mockImplementation(({ where }: { where: Record<string, string> }) =>
+      Promise.resolve(
+        where.email === 'person@example.com'
+          ? { ...user, passwordHash: 'hash', yandexId: null }
+          : null,
+      ),
+    );
+
+    const response = await callback().expect(302);
+
+    expect(response.headers.location).toBe(
+      'http://localhost:5173/auth?oauth_error=oauth_account_conflict',
+    );
+    expect(prismaMocks.user.create).not.toHaveBeenCalled();
+    expect(prismaMocks.authSession.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a new account for an unknown Yandex identity', async () => {
+    prismaMocks.user.findUnique.mockResolvedValue(null);
+    prismaMocks.user.create.mockResolvedValue({ ...user, yandexId: 'ya-1' });
+    prismaMocks.authSession.create.mockResolvedValue({});
+
+    const response = await callback().expect(302);
+
+    expect(response.headers.location).toMatch(
+      /^http:\/\/localhost:5173\/auth\/callback#access_token=/,
+    );
+    expect(prismaMocks.user.create).toHaveBeenCalledWith({
+      data: { yandexId: 'ya-1', email: 'person@example.com', name: 'Person' },
+    });
+  });
+});

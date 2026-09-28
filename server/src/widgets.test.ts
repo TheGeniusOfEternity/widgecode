@@ -44,6 +44,9 @@ beforeEach(() => {
   process.env.JWT_SECRET = 'test-access-secret';
   process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
   vi.clearAllMocks();
+  prismaMocks.$transaction.mockImplementation((operations: Promise<unknown>[]) =>
+    Promise.all(operations),
+  );
 });
 
 const authenticatedAgent = async () => {

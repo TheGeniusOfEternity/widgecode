@@ -329,12 +329,17 @@ export const App = () => {
     isRedirectingFromPrivateRoute ||
     isPrivateRouteTransitioning ||
     isRedirectingFromAuthRoute;
-  const oauthError =
-    route === 'auth' && new URLSearchParams(window.location.search).has('oauth_error')
+  const oauthErrorCode =
+    route === 'auth' ? new URLSearchParams(window.location.search).get('oauth_error') : null;
+  const oauthError = !oauthErrorCode
+    ? null
+    : oauthErrorCode === 'oauth_account_conflict'
       ? locale === 'ru'
+        ? 'Аккаунт с этим email уже зарегистрирован. Войдите по email и паролю.'
+        : 'An account with this email already exists. Sign in with your email and password.'
+      : locale === 'ru'
         ? 'Не удалось войти через Яндекс. Попробуйте ещё раз.'
-        : 'Yandex sign-in failed. Please try again.'
-      : null;
+        : 'Yandex sign-in failed. Please try again.';
   const username =
     authUser?.name || authUser?.email?.split('@')[0] || (locale === 'ru' ? 'Профиль' : 'Profile');
   const isDashboardRoute = isAuthorized && route === 'dashboard';

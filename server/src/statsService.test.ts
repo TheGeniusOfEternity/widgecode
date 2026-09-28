@@ -52,3 +52,20 @@ it('maps the LeetCode contest rating into rendered block data', async () => {
   const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
   expect(String(request.body)).toContain('userContestRanking');
 });
+
+it('caches failed lookups briefly and shortens the widget cache TTL', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404, headers: new Headers() });
+  vi.stubGlobal('fetch', fetchMock);
+  const widget = {
+    config: {},
+    blocks: [{ id: 'block-1', type: 'github-stats', position: 0, config: { username: 'nobody' } }],
+  };
+
+  const first = await renderWidgetStats(widget);
+  const second = await renderWidgetStats(widget);
+
+  expect(first.blocks[0].error).toBe('External API returned 404');
+  expect(second.blocks[0].error).toBe('External API returned 404');
+  expect(first.cacheTtlSeconds).toBe(60);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});

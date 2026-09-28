@@ -366,7 +366,8 @@ export class WidgetController {
       res
         .status(200)
         .set({
-          'Cache-Control': 'public, max-age=900, s-maxage=900, stale-while-revalidate=60',
+          // Follows the stats cache so a failed lookup isn't pinned at the CDN for 15 minutes.
+          'Cache-Control': `public, max-age=${rendered.cacheTtlSeconds}, s-maxage=${rendered.cacheTtlSeconds}, stale-while-revalidate=60`,
           'Content-Type': 'image/svg+xml; charset=utf-8',
         })
         .send(svg);
