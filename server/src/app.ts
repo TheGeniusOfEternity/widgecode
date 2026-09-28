@@ -12,6 +12,10 @@ import { blocksRouter, publicWidgetsRouter, widgetsRouter } from '@server/routes
 export const createApp = () => {
   const app = express();
 
+  // On Vercel requests arrive through one proxy hop; without this every client shares the
+  // proxy's IP and rate limits become global.
+  if (process.env.VERCEL) app.set('trust proxy', 1);
+
   app.use(helmet());
   app.use(
     cors({

@@ -153,7 +153,7 @@ export class AuthController {
       redirectUrl.hash = new URLSearchParams({ access_token: result.accessToken }).toString();
       res.redirect(redirectUrl.toString());
     } catch (error) {
-      if (error instanceof AppError && error.statusCode < 500) {
+      if (error instanceof AppError && error.statusCode === 409) {
         oauthErrorRedirect(res, 'oauth_account_conflict');
         return;
       }
@@ -161,7 +161,7 @@ export class AuthController {
         oauthErrorRedirect(res, 'oauth_not_configured');
         return;
       }
-      if (error instanceof AppError && error.statusCode === 502) {
+      if (error instanceof AppError) {
         oauthErrorRedirect(res, 'oauth_failed');
         return;
       }

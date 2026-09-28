@@ -159,7 +159,12 @@ export class AuthService {
       (yandexUser.default_email ?? yandexUser.emails?.[0])?.trim().toLowerCase() || null;
     let user = await authModel.findUserByYandexId(yandexUser.id);
 
-    if (!user && email) user = await authModel.findUserByEmail(email);
+    // Accounts are keyed by the provider identity, never linked by email: email sign-up doesn't
+    // verify the address, so linking on a match would hand a pre-registered account to whoever
+    // created it. Users with a password account must sign in with the password instead.
+    if (!user && email && (await authModel.findUserByEmail(email))) {
+      throw new AppError(409, 'An account with this email already exists');
+    }
 
     try {
       if (user) {
