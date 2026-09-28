@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { MAX_BLOCK_HEIGHT, MAX_GRID_COLUMNS } from '@shared/widget/geometry.js';
+
 export const BLOCK_TYPES = ['text', 'github-stats', 'github-langs', 'leetcode-stats'] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -12,7 +14,7 @@ export const PALETTE_MODES = ['light', 'dark', 'auto'] as const;
 export type PaletteMode = (typeof PALETTE_MODES)[number];
 
 export const MAX_WIDGET_BLOCKS = 5;
-export const MAX_GRID_COLUMNS = 2;
+export { MAX_GRID_COLUMNS };
 
 export const blockTypeSchema = z.enum(BLOCK_TYPES);
 export const sourceTypeSchema = z.enum(SOURCE_TYPES);
@@ -27,7 +29,7 @@ export const blockLayoutSchema = z.object({
     .max(MAX_GRID_COLUMNS - 1),
   y: z.number().int().min(0).max(100),
   width: z.number().int().min(1).max(MAX_GRID_COLUMNS),
-  height: z.number().int().min(1).max(2),
+  height: z.number().int().min(1).max(MAX_BLOCK_HEIGHT),
 });
 
 export type BlockLayout = z.infer<typeof blockLayoutSchema>;

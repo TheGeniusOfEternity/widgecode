@@ -11,7 +11,19 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 
-import { WidgetBlockContent } from '@/entities/widget';
+import {
+  blockStyleVars,
+  canvasStyleVars,
+  ScaledWidgetFrame,
+  WidgetBlockContent,
+} from '@/entities/widget';
+import {
+  GRID_GAP,
+  MAX_GRID_COLUMNS as MAX_COLUMNS,
+  WIDGET_WIDTH,
+  cellSize,
+  widgetDimensions,
+} from '@shared/widget/geometry';
 import {
   addBlock,
   deleteBlock,
@@ -43,9 +55,6 @@ import styles from '@/pages/widget-editor/ui/WidgetEditorPage.module.css';
 import canvasStyles from '@/entities/widget/ui/WidgetCanvas.module.css';
 
 const MAX_BLOCKS = 5;
-const MAX_COLUMNS = 2;
-const GRID_GAP = 18;
-const WIDGET_WIDTH = 600;
 const DEFAULT_LAYOUT: BlockLayout = { x: 0, y: 0, width: 1, height: 1 };
 
 const blockSizes = [
@@ -108,21 +117,8 @@ const layoutFromBlock = (block: WidgetBlock, index: number, columns: number): Bl
   };
 };
 
-const getWidgetDimensions = (blocks: WidgetBlock[]) => {
-  const rows = Math.max(
-    1,
-    ...blocks.map((block, index) => {
-      const layout = layoutFromBlock(block, index, MAX_COLUMNS);
-      return layout.y + layout.height;
-    }),
-  );
-  const padding = Math.min(34, Math.max(20, WIDGET_WIDTH * 0.04));
-  const cellWidth = (WIDGET_WIDTH - padding * 2 - GRID_GAP * (MAX_COLUMNS - 1)) / MAX_COLUMNS;
-  return {
-    width: WIDGET_WIDTH,
-    height: Math.min(1200, Math.round(rows * cellWidth + GRID_GAP * (rows - 1) + padding * 2)),
-  };
-};
+const getWidgetDimensions = (blocks: WidgetBlock[]) =>
+  widgetDimensions(blocks.map((block, index) => layoutFromBlock(block, index, MAX_COLUMNS)));
 
 const normalizeWidget = (widget: Widget) => {
   const columns = MAX_COLUMNS;
@@ -255,12 +251,7 @@ const EditorBlock = ({
     <article
       className={`${canvasStyles.block} ${styles.sortableBlock} ${selected ? canvasStyles.selected : ''} ${dragging ? styles.draggingBlock : ''}`}
       data-block-id={block.id}
-      style={
-        {
-          gridColumn: `${layout.x + 1} / span ${layout.width}`,
-          gridRow: `${layout.y + 1} / span ${layout.height}`,
-        } as CSSProperties
-      }
+      style={blockStyleVars(layout)}
       onClick={onSelect}
     >
       <button
@@ -327,7 +318,6 @@ export const WidgetEditorPage = ({
   const [isSvgCopied, setSvgCopied] = useState(false);
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
   const [dropCell, setDropCell] = useState<{ x: number; y: number } | null>(null);
-  const [gridWidth, setGridWidth] = useState(0);
   const [previewBlocks, setPreviewBlocks] = useState<Record<string, RenderedBlock>>({});
   const [error, setError] = useState<string | null>(null);
   const savePromiseRef = useRef<Promise<void> | null>(null);
@@ -380,16 +370,6 @@ export const WidgetEditorPage = ({
     isDirtyRef.current = isDirty;
     if (widget && isDirty) writeCachedWidget(widget);
   }, [isDirty, widget]);
-
-  useEffect(() => {
-    const element = gridRef.current;
-    if (!element) return;
-    const updateWidth = () => setGridWidth(element.getBoundingClientRect().width);
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [widget?.id, widget?.blocks.length]);
 
   const previewSignature =
     widget?.blocks
@@ -480,10 +460,12 @@ export const WidgetEditorPage = ({
     requestAnimationFrame(() => {
       const last = blockElement.getBoundingClientRect();
       if (!last.width || !last.height) return;
+      // The canvas may be scaled down; translate in the block's own (unscaled) pixels.
+      const scale = last.width / blockElement.offsetWidth || 1;
       blockElement.animate(
         [
           {
-            transform: `translate(${first.left - last.left}px, ${first.top - last.top}px) scale(${first.width / last.width}, ${first.height / last.height})`,
+            transform: `translate(${(first.left - last.left) / scale}px, ${(first.top - last.top) / scale}px) scale(${first.width / last.width}, ${first.height / last.height})`,
             transformOrigin: 'top left',
           },
           { transform: 'translate(0, 0) scale(1, 1)', transformOrigin: 'top left' },
@@ -499,14 +481,12 @@ export const WidgetEditorPage = ({
     const grid = gridRef.current;
     if (!grid) return null;
     const bounds = grid.getBoundingClientRect();
-    const cellSize = (bounds.width - GRID_GAP) / MAX_COLUMNS;
-    if (cellSize <= 0) return null;
-    const x = clamp(
-      Math.floor((clientX - bounds.left) / (cellSize + GRID_GAP)),
-      0,
-      MAX_COLUMNS - width,
-    );
-    const y = clamp(Math.floor((clientY - bounds.top) / (cellSize + GRID_GAP)), 0, 100);
+    // Bounds are in screen pixels, which differ from layout pixels when the canvas is scaled.
+    const gap = GRID_GAP * (bounds.width / grid.offsetWidth || 1);
+    const cell = (bounds.width - gap * (MAX_COLUMNS - 1)) / MAX_COLUMNS;
+    if (cell <= 0) return null;
+    const x = clamp(Math.floor((clientX - bounds.left) / (cell + gap)), 0, MAX_COLUMNS - width);
+    const y = clamp(Math.floor((clientY - bounds.top) / (cell + gap)), 0, 100);
     return { x, y };
   };
 
@@ -813,23 +793,19 @@ export const WidgetEditorPage = ({
     );
 
   const gridRows = gridRowsFor(widget);
-  const gridStyle = {
-    '--grid-cell-size': gridWidth
-      ? `${Math.max((gridWidth - GRID_GAP) / MAX_COLUMNS, 0)}px`
-      : undefined,
-  } as CSSProperties;
-  const palette = paletteTokens[widget.config.palette];
+  const gridStyle = { '--grid-cell-size': `${cellSize(WIDGET_WIDTH)}px` } as CSSProperties;
   const canvasStyle = {
-    '--widget-light-accent': palette.light.accent,
-    '--widget-light-soft': palette.light.soft,
-    '--widget-light-ink': palette.light.ink,
-    '--widget-light-surface': palette.light.surface,
-    '--widget-dark-accent': palette.dark.accent,
-    '--widget-dark-soft': palette.dark.soft,
-    '--widget-dark-ink': palette.dark.ink,
-    '--widget-dark-surface': palette.dark.surface,
+    ...canvasStyleVars(widget.config.palette, { width: WIDGET_WIDTH }),
     '--widget-columns': MAX_COLUMNS,
   } as CSSProperties;
+  // While dragging, the grid shows one spare row below the blocks as a drop target.
+  const displayRows = draggingBlockId
+    ? gridRows
+    : Math.max(1, ...widget.blocks.map((block) => getLayout(block).y + getLayout(block).height));
+  const canvasHeight =
+    widget.blocks.length === 0
+      ? widget.height
+      : widgetDimensions([{ x: 0, y: displayRows - 1, width: 1, height: 1 }]).height;
 
   return (
     <section className={styles.editorPage}>
@@ -915,71 +891,70 @@ export const WidgetEditorPage = ({
           <div className={styles.canvasMeta}>
             <span>canvas / {widget.slug}</span>
             <span>
-              {widget.width} × {widget.height}
+              {widget.blocks.length} {t.blocks.toLowerCase()} · {widget.width} × {widget.height}
             </span>
           </div>
-          <div
-            className={styles.gridSurface}
-            style={canvasStyle}
-            data-palette-mode={widget.config.paletteMode}
+          <ScaledWidgetFrame
+            className={styles.canvasFrame}
+            width={WIDGET_WIDTH}
+            height={canvasHeight}
+            elevated
+            accent={paletteTokens[widget.config.palette]?.light.accent}
           >
-            <div className={canvasStyles.canvasHeader}>
-              <span className={canvasStyles.brandDot} />
-              <span>live widget preview</span>
-            </div>
-            {widget.blocks.length === 0 ? (
-              <p className={canvasStyles.empty}>
-                {locale === 'ru'
-                  ? 'Добавьте первый блок слева.'
-                  : 'Add your first block from the library.'}
-              </p>
-            ) : (
-              <div className={styles.gridLayoutHost}>
-                <div className={styles.editorBlocks} ref={gridRef} style={gridStyle}>
-                  {draggingBlockId &&
-                    Array.from({ length: gridRows * MAX_COLUMNS }, (_, index) => {
-                      const x = index % MAX_COLUMNS;
-                      const y = Math.floor(index / MAX_COLUMNS);
-                      const isActive = dropCell?.x === x && dropCell.y === y;
-                      return (
-                        <div
-                          className={`${styles.dropCell} ${isActive ? styles.dropCellActive : ''}`}
-                          key={`${x}:${y}`}
-                          style={{ gridColumn: x + 1, gridRow: y + 1 }}
-                        />
-                      );
-                    })}
-                  {widget.blocks.map((block) => (
-                    <EditorBlock
-                      key={block.id}
-                      block={block}
-                      selected={block.id === selectedBlockId}
-                      onSelect={() => {
-                        setSelectedBlockId(block.id);
-                        setActivePanel('block');
-                      }}
-                      onRemove={() => void handleRemoveBlock(block.id)}
-                      removeLabel={t.removeBlock}
-                      onPointerDown={handleBlockPointerDown}
-                      onPointerMove={handleBlockPointerMove}
-                      onPointerUp={handleBlockPointerUp}
-                      onPointerCancel={handleBlockPointerCancel}
-                      onResize={(width, height) => handleResizeBlock(block.id, width, height)}
-                      dragging={draggingBlockId === block.id}
-                      rendered={previewBlocks[block.id]}
-                      locale={locale}
-                    />
-                  ))}
+            <div
+              className={`${canvasStyles.canvas} ${styles.editorSurface}`}
+              style={canvasStyle}
+              data-palette-mode={widget.config.paletteMode}
+              data-interactive="true"
+            >
+              {widget.blocks.length === 0 ? (
+                <p className={canvasStyles.empty}>
+                  {locale === 'ru'
+                    ? 'Добавьте первый блок слева.'
+                    : 'Add your first block from the library.'}
+                </p>
+              ) : (
+                <div className={styles.gridLayoutHost}>
+                  <div className={styles.editorBlocks} ref={gridRef} style={gridStyle}>
+                    {draggingBlockId &&
+                      Array.from({ length: gridRows * MAX_COLUMNS }, (_, index) => {
+                        const x = index % MAX_COLUMNS;
+                        const y = Math.floor(index / MAX_COLUMNS);
+                        const isActive = dropCell?.x === x && dropCell.y === y;
+                        return (
+                          <div
+                            className={`${styles.dropCell} ${isActive ? styles.dropCellActive : ''}`}
+                            key={`${x}:${y}`}
+                            style={{ gridColumn: x + 1, gridRow: y + 1 }}
+                          />
+                        );
+                      })}
+                    {widget.blocks.map((block) => (
+                      <EditorBlock
+                        key={block.id}
+                        block={block}
+                        selected={block.id === selectedBlockId}
+                        onSelect={() => {
+                          setSelectedBlockId(block.id);
+                          setActivePanel('block');
+                        }}
+                        onRemove={() => void handleRemoveBlock(block.id)}
+                        removeLabel={t.removeBlock}
+                        onPointerDown={handleBlockPointerDown}
+                        onPointerMove={handleBlockPointerMove}
+                        onPointerUp={handleBlockPointerUp}
+                        onPointerCancel={handleBlockPointerCancel}
+                        onResize={(width, height) => handleResizeBlock(block.id, width, height)}
+                        dragging={draggingBlockId === block.id}
+                        rendered={previewBlocks[block.id]}
+                        locale={locale}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className={`${canvasStyles.canvasFooter} ${styles.canvasFooter}`}>
-              <span>
-                {widget.blocks.length} {t.blocks.toLowerCase()}
-              </span>
-              <span>updates every 15 min</span>
+              )}
             </div>
-          </div>
+          </ScaledWidgetFrame>
           {error && (
             <p className={styles.inlineError} role="alert">
               {error}

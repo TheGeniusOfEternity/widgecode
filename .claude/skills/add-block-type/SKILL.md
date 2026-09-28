@@ -26,7 +26,8 @@ validate on the server but render blank in the editor, or render in the editor b
 
 ## 3. SVG export — `server/src/shared/widget/WidgetCanvas.tsx`
 
-- Add a block renderer next to the existing ones (they share `padding`, `tokens`, `clamp`, `formatNumber`).
+- Add a block renderer in `BlockContent` next to the existing ones. Use the `frame` (content width/height + `blockTypography`), `baseline()`, `fitText`, `StatsRow`/`TitleRow` helpers — no hard-coded font sizes.
+- Put new labels in `server/src/shared/widget/theme.ts` (`widgetLabels`, ru + en) so both renderers share them.
 - Handle loading/`error`/empty data states like the other blocks.
 - Any image must be a data URI (see `buildAvatarDataUris` in `widgetController.ts`) — external `href`s don't load when the SVG is used as `<img>` on GitHub.
 
@@ -34,7 +35,7 @@ validate on the server but render blank in the editor, or render in the editor b
 
 - `model/types.ts`: extend `BlockType` and the rendered data types.
 - `model/registry.ts`: labels + ru/en descriptions, presets mirror.
-- `ui/WidgetCanvas.tsx` + `.module.css`: add `sampleData[type]` (shown before live data) and the HTML renderer. Keep geometry in sync with the SVG renderer — see the `widget-render-parity` skill.
+- `ui/WidgetCanvas.tsx` + `.module.css`: add `sampleData[type]` (shown before live data) and the HTML renderer, mirroring the SVG element order and using only the `--block-*` custom properties — see the `widget-render-parity` skill.
 - `pages/widget-editor/ui/WidgetEditorPage.tsx`: block palette entry and settings controls for each option.
 - `shared/locale/content.ts`: all new strings in both `ru` and `en`.
 

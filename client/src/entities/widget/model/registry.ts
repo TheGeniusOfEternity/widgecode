@@ -100,31 +100,4 @@ export const defaultBlockConfig = (type: BlockType): Record<string, unknown> => 
 
 export const getPreset = (id: string | undefined) => presets.find((preset) => preset.id === id);
 
-export type PaletteTokens = { accent: string; soft: string; ink: string; surface: string };
-
-export const paletteTokens: Record<PaletteId, { light: PaletteTokens; dark: PaletteTokens }> = {
-  lavender: {
-    light: { accent: '#8f71e8', soft: '#eee8ff', ink: '#27213d', surface: '#fbf9ff' },
-    dark: { accent: '#bda9ff', soft: '#30274f', ink: '#f4efff', surface: '#191526' },
-  },
-  midnight: {
-    light: { accent: '#6075c9', soft: '#e4eaff', ink: '#17213d', surface: '#f7f9ff' },
-    dark: { accent: '#91a4ff', soft: '#263258', ink: '#eef1ff', surface: '#11172b' },
-  },
-  mint: {
-    light: { accent: '#2caa8a', soft: '#ddf7ee', ink: '#143a31', surface: '#f7fffc' },
-    dark: { accent: '#73d9b8', soft: '#183d35', ink: '#e7fff7', surface: '#11221f' },
-  },
-  sunset: {
-    light: { accent: '#dc7657', soft: '#ffeadf', ink: '#47241a', surface: '#fffaf7' },
-    dark: { accent: '#ff9e7a', soft: '#4a2b25', ink: '#fff0ea', surface: '#251714' },
-  },
-  cobalt: {
-    light: { accent: '#2868d3', soft: '#e5efff', ink: '#152e59', surface: '#f8fbff' },
-    dark: { accent: '#72a9ff', soft: '#1d3868', ink: '#edf4ff', surface: '#101c32' },
-  },
-  paper: {
-    light: { accent: '#635f5a', soft: '#eee9e2', ink: '#302d29', surface: '#fffdf9' },
-    dark: { accent: '#c9c1b8', soft: '#3a3733', ink: '#f7f1e8', surface: '#211f1d' },
-  },
-};
+export { paletteTokens, type PaletteTokens } from '@shared/widget/theme';

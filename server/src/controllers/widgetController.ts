@@ -361,7 +361,6 @@ export class WidgetController {
           renderedBlocks: rendered.blocks,
           avatarDataUris,
           locale,
-          showChrome: false,
         }),
       );
       res

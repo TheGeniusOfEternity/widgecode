@@ -1,3 +1,33 @@
+import {
+  BLOCK_BORDER,
+  BLOCK_LINE_HEIGHT,
+  BLOCK_PADDING,
+  BLOCK_RADIUS,
+  CANVAS_RADIUS,
+  MAX_BLOCK_HEIGHT,
+  MAX_GRID_COLUMNS,
+  TEXT_BLOCK_LINE_HEIGHT,
+  blockBox,
+  blockContentWidth,
+  blockTypography,
+  gridRows,
+  type BlockTypography,
+  type GridLayout,
+} from './geometry.js';
+import {
+  difficultyColors,
+  errorColor,
+  formatStatValue,
+  languageColor,
+  paletteTokens,
+  widgetLabels,
+  type PaletteName,
+  type PaletteTokens,
+  type WidgetLocale,
+} from './theme.js';
+
+export { languageColor } from './theme.js';
+
 export type WidgetCanvasBlock = {
   id: string;
   type: string;
@@ -25,71 +55,11 @@ export type WidgetCanvasProps = {
   outputHeight?: number;
   renderedBlocks?: WidgetCanvasRenderedBlock[];
   avatarDataUris?: Record<string, string>;
-  locale?: 'ru' | 'en';
-  showChrome?: boolean;
+  locale?: WidgetLocale;
 };
 
-type PaletteTokens = {
-  accent: string;
-  soft: string;
-  ink: string;
-  surface: string;
-};
-
-const paletteTokens: Record<string, { light: PaletteTokens; dark: PaletteTokens }> = {
-  lavender: {
-    light: { accent: '#8f71e8', soft: '#eee8ff', ink: '#27213d', surface: '#fbf9ff' },
-    dark: { accent: '#bda9ff', soft: '#30274f', ink: '#f4efff', surface: '#191526' },
-  },
-  midnight: {
-    light: { accent: '#6075c9', soft: '#e4eaff', ink: '#17213d', surface: '#f7f9ff' },
-    dark: { accent: '#91a4ff', soft: '#263258', ink: '#eef1ff', surface: '#11172b' },
-  },
-  mint: {
-    light: { accent: '#2caa8a', soft: '#ddf7ee', ink: '#143a31', surface: '#f7fffc' },
-    dark: { accent: '#73d9b8', soft: '#183d35', ink: '#e7fff7', surface: '#11221f' },
-  },
-  sunset: {
-    light: { accent: '#dc7657', soft: '#ffeadf', ink: '#47241a', surface: '#fffaf7' },
-    dark: { accent: '#ff9e7a', soft: '#4a2b25', ink: '#fff0ea', surface: '#251714' },
-  },
-  cobalt: {
-    light: { accent: '#2868d3', soft: '#e5efff', ink: '#152e59', surface: '#f8fbff' },
-    dark: { accent: '#72a9ff', soft: '#1d3868', ink: '#edf4ff', surface: '#101c32' },
-  },
-  paper: {
-    light: { accent: '#635f5a', soft: '#eee9e2', ink: '#302d29', surface: '#fffdf9' },
-    dark: { accent: '#c9c1b8', soft: '#3a3733', ink: '#f7f1e8', surface: '#211f1d' },
-  },
-};
-
-const githubLanguageColors: Record<string, string> = {
-  assembly: '#6e4c13',
-  c: '#555555',
-  'c#': '#178600',
-  'c++': '#f34b7d',
-  css: '#663399',
-  dart: '#00b4ab',
-  go: '#00add8',
-  html: '#e34c26',
-  java: '#b07219',
-  javascript: '#f1e05a',
-  kotlin: '#a97bff',
-  lua: '#000080',
-  'objective-c': '#438eff',
-  perl: '#0298c3',
-  php: '#4f5d95',
-  python: '#3572a5',
-  r: '#198ce7',
-  ruby: '#701516',
-  rust: '#dea584',
-  scala: '#c22d40',
-  shell: '#89e051',
-  svelte: '#ff3e00',
-  swift: '#f05138',
-  typescript: '#3178c6',
-  vue: '#41b883',
-};
+export const WIDGET_FONT_FAMILY =
+  "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif";
 
 const numberFormatter = new Intl.NumberFormat('en-US');
 
@@ -119,9 +89,6 @@ const mixHex = (left: string, right: string, leftWeight: number) => {
 const formatNumber = (value: unknown, fallback = '—') =>
   typeof value === 'number' && Number.isFinite(value) ? numberFormatter.format(value) : fallback;
 
-export const languageColor = (name: string) =>
-  githubLanguageColors[name.trim().toLowerCase()] ?? '#8b949e';
-
 const imageUrl = (value: unknown) => {
   const url = asString(value);
   return /^https?:\/\//i.test(url) ? url : null;
@@ -129,14 +96,24 @@ const imageUrl = (value: unknown) => {
 
 const safeId = (value: string) => value.replace(/[^a-z0-9_-]/gi, '-');
 
-const layoutOf = (block: WidgetCanvasBlock) => {
+const layoutOf = (block: WidgetCanvasBlock): GridLayout => {
   const value = asRecord(asRecord(block.config).layout);
   return {
-    x: clamp(asNumber(value.x), 0, 1),
+    x: clamp(asNumber(value.x), 0, MAX_GRID_COLUMNS - 1),
     y: Math.max(0, asNumber(value.y, block.position)),
-    width: clamp(asNumber(value.width, 1), 1, 2),
-    height: clamp(asNumber(value.height, 1), 1, 2),
+    width: clamp(asNumber(value.width, 1), 1, MAX_GRID_COLUMNS),
+    height: clamp(asNumber(value.height, 1), 1, MAX_BLOCK_HEIGHT),
   };
+};
+
+// Inter vertical metrics: ascent 0.96875em, content area 1.2109em.
+const baseline = (top: number, size: number, lineHeight = BLOCK_LINE_HEIGHT) =>
+  top + size * ((lineHeight - 1.2109) / 2 + 0.96875);
+
+// SVG has no text layout, so widths are estimated from an average glyph width.
+const fitText = (value: string, width: number, size: number, glyph = 0.56) => {
+  const maxLength = Math.max(Math.floor(width / (size * glyph)), 1);
+  return value.length > maxLength ? `${value.slice(0, Math.max(maxLength - 1, 1))}…` : value;
 };
 
 const linesOf = (value: string, maxLength: number, maxLines: number) => {
@@ -156,9 +133,21 @@ const linesOf = (value: string, maxLength: number, maxLines: number) => {
   }
   if (lines.length < maxLines && current) lines.push(current);
   if (lines.length === maxLines && words.join(' ').length > lines.join(' ').length) {
-    lines[maxLines - 1] = `${lines[maxLines - 1].slice(0, Math.max(maxLength - 3, 1))}...`;
+    lines[maxLines - 1] = `${lines[maxLines - 1].slice(0, Math.max(maxLength - 1, 1))}…`;
   }
   return lines.length > 0 ? lines : [''];
+};
+
+type TextProps = {
+  x: number;
+  y: number;
+  value: unknown;
+  fill: string;
+  size: number;
+  weight?: number;
+  anchor?: 'start' | 'middle' | 'end';
+  opacity?: number;
+  letterSpacing?: string;
 };
 
 const SvgText = ({
@@ -171,17 +160,7 @@ const SvgText = ({
   anchor = 'start',
   opacity,
   letterSpacing,
-}: {
-  x: number;
-  y: number;
-  value: unknown;
-  fill: string;
-  size: number;
-  weight?: number;
-  anchor?: 'start' | 'middle' | 'end';
-  opacity?: number;
-  letterSpacing?: string;
-}) => (
+}: TextProps) => (
   <text
     x={x}
     y={y}
@@ -197,180 +176,217 @@ const SvgText = ({
 );
 
 const MultilineText = ({
-  x,
-  y,
-  value,
-  fill,
-  size,
-  weight,
-  anchor,
-  maxLength,
-  maxLines,
-  letterSpacing,
-}: {
-  x: number;
-  y: number;
-  value: string;
-  fill: string;
-  size: number;
-  weight?: number;
-  anchor?: 'start' | 'middle' | 'end';
-  maxLength: number;
-  maxLines: number;
-  letterSpacing?: string;
-}) => (
+  top,
+  lineHeight,
+  lines,
+  ...text
+}: Omit<TextProps, 'y' | 'value'> & { top: number; lineHeight: number; lines: string[] }) => (
   <>
-    {linesOf(value, maxLength, maxLines).map((line, index) => (
+    {lines.map((line, index) => (
       <SvgText
         key={`${line}-${index}`}
-        x={x}
-        y={y + index * size * 1.35}
+        {...text}
+        y={baseline(top + index * text.size * lineHeight, text.size, lineHeight)}
         value={line}
-        fill={fill}
-        size={size}
-        weight={weight}
-        anchor={anchor}
-        letterSpacing={letterSpacing}
       />
     ))}
   </>
 );
 
-const Stat = ({
-  x,
-  y,
-  label,
-  value,
-  tokens,
-}: {
-  x: number;
-  y: number;
-  label: string;
-  value: unknown;
-  tokens: PaletteTokens;
-}) => (
-  <g>
-    <SvgText
-      x={x}
-      y={y + 24}
-      value={formatNumber(value)}
-      fill={tokens.ink}
-      size={30}
-      weight={800}
-      letterSpacing="-0.06em"
-    />
-    <SvgText x={x} y={y + 43} value={label} fill={tokens.ink} size={12} opacity={0.6} />
-  </g>
-);
+type BlockFrame = { width: number; height: number; typography: BlockTypography };
 
-const PreviewState = ({
-  x,
-  y,
-  width,
-  source,
-  locale,
+type StatItem = { label: string; value: unknown };
+
+// Mirrors `.statsRow` / `.stat` in the HTML canvas: equal columns, value above label.
+const StatsRow = ({
+  top,
+  items,
+  frame,
   tokens,
 }: {
-  x: number;
-  y: number;
-  width: number;
-  source: 'github' | 'leetcode';
-  locale: 'ru' | 'en';
+  top: number;
+  items: StatItem[];
+  frame: BlockFrame;
   tokens: PaletteTokens;
-}) => (
-  <g>
-    <rect
-      x={x}
-      y={y - 28}
-      width={width}
-      height={76}
-      rx={14}
-      fill={tokens.accent}
-      fillOpacity={0.07}
-      stroke={tokens.accent}
-      strokeOpacity={0.3}
-      strokeDasharray="5 5"
-    />
-    <rect
-      x={x + 14}
-      y={y - 10}
-      width={32}
-      height={32}
-      rx={10}
-      fill={tokens.accent}
-      fillOpacity={0.12}
-    />
-    <SvgText
-      x={x + 30}
-      y={y + 12}
-      value="@"
-      fill={tokens.accent}
-      size={13}
-      weight={800}
-      anchor="middle"
-    />
-    <SvgText
-      x={x + 58}
-      y={y + 2}
-      value={locale === 'ru' ? 'Добавьте username' : 'Add a username'}
-      fill={tokens.ink}
-      size={13}
-      weight={700}
-    />
-    <SvgText
-      x={x + 58}
-      y={y + 20}
-      value={
-        locale === 'ru'
-          ? `Укажите ${source} username в настройках блока`
-          : `Add a ${source} username in block settings`
-      }
-      fill={tokens.ink}
-      size={11}
-      opacity={0.62}
-    />
-  </g>
-);
+}) => {
+  const { typography: t } = frame;
+  const columnWidth = (frame.width - t.columnGap * (items.length - 1)) / Math.max(items.length, 1);
+  const labelTop = top + t.statValue * BLOCK_LINE_HEIGHT + 3;
+  return (
+    <>
+      {items.map((item, index) => {
+        const x = index * (columnWidth + t.columnGap);
+        return (
+          <g key={item.label}>
+            <SvgText
+              x={x}
+              y={baseline(top, t.statValue)}
+              value={formatStatValue(item.value, columnWidth, t.statValue)}
+              fill={tokens.ink}
+              size={t.statValue}
+              weight={800}
+              letterSpacing="-0.06em"
+            />
+            <SvgText
+              x={x}
+              y={baseline(labelTop, t.meta)}
+              value={fitText(item.label, columnWidth, t.meta)}
+              fill={tokens.ink}
+              size={t.meta}
+              opacity={0.6}
+            />
+          </g>
+        );
+      })}
+    </>
+  );
+};
+
+const statsRowHeight = (t: BlockTypography) =>
+  t.statValue * BLOCK_LINE_HEIGHT + 3 + t.meta * BLOCK_LINE_HEIGHT;
+
+// Mirrors `.blockTitleRow`: bold title on the left, muted meta on the right.
+const TitleRow = ({
+  title,
+  meta,
+  frame,
+  tokens,
+}: {
+  title: string;
+  meta: string;
+  frame: BlockFrame;
+  tokens: PaletteTokens;
+}) => {
+  const { typography: t } = frame;
+  const rowHeight = t.heading * BLOCK_LINE_HEIGHT;
+  const metaTop = (rowHeight - t.meta * BLOCK_LINE_HEIGHT) / 2;
+  const metaWidth = Math.min(meta.length * t.meta * 0.56, frame.width * 0.45);
+  return (
+    <>
+      <SvgText
+        x={0}
+        y={baseline(0, t.heading)}
+        value={fitText(title, frame.width - metaWidth - 12, t.heading, 0.6)}
+        fill={tokens.ink}
+        size={t.heading}
+        weight={800}
+      />
+      <SvgText
+        x={frame.width}
+        y={baseline(metaTop, t.meta)}
+        value={fitText(meta, frame.width * 0.45, t.meta)}
+        fill={tokens.ink}
+        size={t.meta}
+        anchor="end"
+        opacity={0.6}
+      />
+    </>
+  );
+};
+
+// Mirrors `.previewState` in the HTML canvas.
+const PreviewState = ({
+  source,
+  frame,
+  tokens,
+  locale,
+}: {
+  source: 'GitHub' | 'LeetCode';
+  frame: BlockFrame;
+  tokens: PaletteTokens;
+  locale: WidgetLocale;
+}) => {
+  const labels = widgetLabels(locale);
+  const boxHeight = 76;
+  return (
+    <g>
+      <rect
+        x={0.5}
+        y={0.5}
+        width={frame.width - 1}
+        height={boxHeight - 1}
+        rx={14}
+        fill={tokens.accent}
+        fillOpacity={0.07}
+        stroke={tokens.accent}
+        strokeOpacity={0.3}
+        strokeDasharray="5 5"
+      />
+      <rect
+        x={14}
+        y={(boxHeight - 32) / 2}
+        width={32}
+        height={32}
+        rx={10}
+        fill={tokens.accent}
+        fillOpacity={0.12}
+        stroke={tokens.accent}
+        strokeOpacity={0.34}
+      />
+      <SvgText
+        x={30}
+        y={baseline((boxHeight - 13 * BLOCK_LINE_HEIGHT) / 2, 13)}
+        value="@"
+        fill={tokens.accent}
+        size={13}
+        weight={800}
+        anchor="middle"
+      />
+      <SvgText
+        x={58}
+        y={baseline(boxHeight / 2 - 18, 13)}
+        value={labels.addUsername}
+        fill={tokens.ink}
+        size={13}
+        weight={700}
+      />
+      <SvgText
+        x={58}
+        y={baseline(boxHeight / 2 + 2, 11, 1.4)}
+        value={fitText(labels.addUsernameHint(source), frame.width - 72, 11)}
+        fill={tokens.ink}
+        size={11}
+        opacity={0.62}
+      />
+    </g>
+  );
+};
 
 const BlockContent = ({
   block,
   rendered,
   tokens,
   locale,
-  width,
-  height,
-  avatarDataUris,
+  frame,
+  avatarDataUri,
 }: {
   block: WidgetCanvasBlock;
   rendered?: WidgetCanvasRenderedBlock;
   tokens: PaletteTokens;
-  locale: 'ru' | 'en';
-  width: number;
-  height: number;
-  avatarDataUris?: Record<string, string>;
+  locale: WidgetLocale;
+  frame: BlockFrame;
+  avatarDataUri?: string;
 }) => {
-  const padding = Math.min(20, Math.max(10, width * 0.04));
-  const contentWidth = Math.max(width - padding * 2, 80);
-  const contentHeight = Math.max(height - padding * 2, 80);
+  const labels = widgetLabels(locale);
+  const { typography: t } = frame;
   const config = asRecord(block.config);
   const data = asRecord(rendered?.data);
   const source = block.type.startsWith('github')
-    ? 'github'
+    ? 'GitHub'
     : block.type.startsWith('leetcode')
-      ? 'leetcode'
+      ? 'LeetCode'
       : null;
   const username = asString(config.username);
 
   if (rendered?.error) {
     return (
       <MultilineText
-        x={padding}
-        y={padding + 18}
-        value={rendered.error}
-        fill="#a54352"
+        x={0}
+        top={0}
+        lineHeight={1.5}
+        lines={linesOf(rendered.error, Math.floor(frame.width / (13 * 0.52)), 4)}
+        fill={errorColor}
         size={13}
-        maxLength={Math.max(Math.floor(width / 8), 16)}
-        maxLines={3}
       />
     );
   }
@@ -378,79 +394,67 @@ const BlockContent = ({
   if (block.type === 'text') {
     const align = config.align === 'center' || config.align === 'right' ? config.align : 'left';
     const anchor = align === 'center' ? 'middle' : align === 'right' ? 'end' : 'start';
-    const x = align === 'center' ? width / 2 : align === 'right' ? width - padding : padding;
+    const x = align === 'center' ? frame.width / 2 : align === 'right' ? frame.width : 0;
+    const maxLines = Math.max(Math.floor(frame.height / (t.text * TEXT_BLOCK_LINE_HEIGHT)), 1);
     return (
       <MultilineText
         x={x}
-        y={padding + Math.min(contentHeight / 2, 44)}
-        value={asString(
-          config.text,
-          locale === 'ru'
-            ? 'Создайте что-то достойное публикации.'
-            : 'Build something worth sharing.',
+        top={0}
+        lineHeight={TEXT_BLOCK_LINE_HEIGHT}
+        lines={linesOf(
+          asString(config.text, labels.defaultText),
+          Math.floor(frame.width / (t.text * 0.5)),
+          maxLines,
         )}
         fill={tokens.ink}
-        size={Math.min(34, Math.max(16, contentWidth * 0.12))}
+        size={t.text}
         weight={800}
         anchor={anchor}
-        maxLength={Math.max(Math.floor(contentWidth / 10), 16)}
-        maxLines={4}
         letterSpacing="-0.05em"
       />
     );
   }
 
-  if (source && !username && !rendered) {
-    return (
-      <PreviewState
-        x={padding}
-        y={padding + 24}
-        width={contentWidth}
-        source={source}
-        locale={locale}
-        tokens={tokens}
-      />
-    );
+  if (source && !username && !rendered?.data) {
+    return <PreviewState source={source} frame={frame} tokens={tokens} locale={locale} />;
   }
 
   if (!rendered?.data) {
     return (
       <SvgText
-        x={padding}
-        y={padding + 20}
-        value={locale === 'ru' ? 'Загрузка...' : 'Loading...'}
+        x={0}
+        y={baseline(0, t.meta)}
+        value={labels.loading}
         fill={tokens.ink}
-        size={14}
-        weight={650}
+        size={t.meta}
+        opacity={0.6}
       />
     );
   }
 
   if (block.type === 'github-stats') {
-    const avatarSize = clamp(width * 0.16, 24, 42);
-    const avatarHref = avatarDataUris?.[block.id] ?? imageUrl(data.avatarUrl);
+    const avatarHref = avatarDataUri ?? imageUrl(data.avatarUrl);
     const avatarId = `avatar-${safeId(block.id)}`;
-    const headingX = padding + avatarSize + 12;
-    const statsY = padding + avatarSize + 18;
-    const labels =
-      locale === 'ru'
-        ? { repositories: 'Репозитории', followers: 'Подписчики', following: 'Подписки' }
-        : { repositories: 'Repos', followers: 'Followers', following: 'Following' };
+    const tightGap = clamp(frame.width / 100, 2, 3);
+    const textColumnHeight = t.heading * BLOCK_LINE_HEIGHT + tightGap + t.meta * BLOCK_LINE_HEIGHT;
+    const headingHeight = Math.max(t.avatar, textColumnHeight);
+    const avatarY = (headingHeight - t.avatar) / 2;
+    const textTop = (headingHeight - textColumnHeight) / 2;
+    const textX = t.avatar + t.headingGap;
+    const textWidth = frame.width - textX;
     const stats = [
       config.showRepositories !== false
         ? { label: labels.repositories, value: data.publicRepositories }
         : null,
       config.showFollowers !== false ? { label: labels.followers, value: data.followers } : null,
       config.showFollowing !== false ? { label: labels.following, value: data.following } : null,
-    ].filter((item): item is { label: string; value: unknown } => item !== null);
-    const statWidth = contentWidth / Math.max(stats.length, 1);
+    ].filter((item): item is StatItem => item !== null);
     return (
       <>
         <rect
-          x={padding}
-          y={padding}
-          width={avatarSize}
-          height={avatarSize}
+          y={avatarY}
+          width={t.avatar}
+          height={t.avatar}
           rx={14}
           fill={tokens.accent}
           fillOpacity={0.22}
@@ -458,123 +462,122 @@ const BlockContent = ({
         {avatarHref && (
           <>
             <clipPath id={avatarId}>
-              <rect x={padding} y={padding} width={avatarSize} height={avatarSize} rx={14} />
+              <rect y={avatarY} width={t.avatar} height={t.avatar} rx={14} />
             </clipPath>
             <image
               href={avatarHref}
-              x={padding}
-              y={padding}
-              width={avatarSize}
-              height={avatarSize}
+              y={avatarY}
+              width={t.avatar}
+              height={t.avatar}
               preserveAspectRatio="xMidYMid slice"
               clipPath={`url(#${avatarId})`}
             />
           </>
         )}
         <SvgText
-          x={headingX}
-          y={padding + 18}
-          value={asString(data.name, 'GitHub profile')}
+          x={textX}
+          y={baseline(textTop, t.heading)}
+          value={fitText(asString(data.name, labels.githubProfile), textWidth, t.heading, 0.6)}
           fill={tokens.ink}
-          size={18}
+          size={t.heading}
           weight={800}
         />
         <SvgText
-          x={headingX}
-          y={padding + 38}
-          value={`@${asString(data.username, username || 'username')}`}
+          x={textX}
+          y={baseline(textTop + t.heading * BLOCK_LINE_HEIGHT + tightGap, t.meta)}
+          value={fitText(`@${asString(data.username, username || 'username')}`, textWidth, t.meta)}
           fill={tokens.ink}
-          size={12}
-          opacity={0.64}
+          size={t.meta}
+          opacity={0.6}
         />
-        {stats.map((item, index) => (
-          <Stat
-            key={item.label}
-            x={padding + index * statWidth}
-            y={statsY}
-            label={item.label}
-            value={item.value}
+        {stats.length > 0 && (
+          <StatsRow
+            top={headingHeight + t.sectionGap}
+            items={stats}
+            frame={frame}
             tokens={tokens}
           />
-        ))}
+        )}
       </>
     );
   }
 
   if (block.type === 'github-langs') {
     const languages = Array.isArray(data.languages)
-      ? data.languages.filter((item): item is { name: string; percentage: number } => {
-          const value = asRecord(item);
-          return typeof value.name === 'string' && typeof value.percentage === 'number';
-        })
+      ? data.languages
+          .filter((item): item is { name: string; percentage: number } => {
+            const value = asRecord(item);
+            return typeof value.name === 'string' && typeof value.percentage === 'number';
+          })
+          .slice(0, 8)
       : [];
-    const rows = languages.slice(0, 8);
-    const barY = padding + 50;
-    const itemWidth = contentWidth / 2;
+    const barY = t.heading * BLOCK_LINE_HEIGHT + t.sectionGap;
+    const listTop = barY + 10 + t.sectionGap;
+    const columnWidth = (frame.width - t.columnGap) / 2;
+    const rowHeight = t.meta * BLOCK_LINE_HEIGHT;
+    const barClipId = `bar-${safeId(block.id)}`;
+    let barOffset = 0;
     return (
       <>
-        <SvgText
-          x={padding}
-          y={padding + 18}
-          value={locale === 'ru' ? 'Языки' : 'Languages'}
-          fill={tokens.ink}
-          size={18}
-          weight={800}
+        <TitleRow
+          title={labels.languages}
+          meta={`${labels.top} ${languages.length}`}
+          frame={frame}
+          tokens={tokens}
         />
-        <SvgText
-          x={width - padding}
-          y={padding + 18}
-          value={`${locale === 'ru' ? 'топ' : 'top'} ${rows.length || 4}`}
-          fill={tokens.ink}
-          size={11}
-          weight={650}
-          anchor="end"
-          opacity={0.6}
-        />
-        <rect x={padding} y={barY} width={contentWidth} height={10} rx={5} fill={tokens.soft} />
-        {rows.map((language, index) => {
-          const segmentWidth = Math.max((language.percentage / 100) * contentWidth, 2);
-          const x =
-            padding +
-            rows
-              .slice(0, index)
-              .reduce((sum, item) => sum + (item.percentage / 100) * contentWidth, 0);
-          return (
-            <rect
-              key={`bar-${language.name}`}
-              x={x}
-              y={barY}
-              width={segmentWidth}
-              height={10}
-              fill={languageColor(language.name)}
-            />
-          );
-        })}
-        {rows.map((language, index) => {
-          const column = index % 2;
-          const row = Math.floor(index / 2);
-          const x = padding + column * itemWidth;
-          const y = barY + 34 + row * 26;
+        <clipPath id={barClipId}>
+          <rect y={barY} width={frame.width} height={10} rx={5} />
+        </clipPath>
+        <g clipPath={`url(#${barClipId})`}>
+          <rect y={barY} width={frame.width} height={10} fill={tokens.ink} fillOpacity={0.1} />
+          {languages.map((language) => {
+            const segmentWidth = (Math.max(language.percentage, 0) / 100) * frame.width;
+            const x = barOffset;
+            barOffset += segmentWidth;
+            return (
+              <rect
+                key={`bar-${language.name}`}
+                x={x}
+                y={barY}
+                width={segmentWidth}
+                height={10}
+                fill={languageColor(language.name)}
+              />
+            );
+          })}
+        </g>
+        {languages.map((language, index) => {
+          const x = (index % 2) * (columnWidth + t.columnGap);
+          const top = listTop + Math.floor(index / 2) * (rowHeight + t.rowGap);
+          const percent = `${language.percentage}%`;
           return (
             <g key={language.name}>
-              <circle cx={x + 4} cy={y - 4} r={3.5} fill={languageColor(language.name)} />
-              <SvgText
-                x={x + 14}
-                y={y}
-                value={language.name}
-                fill={tokens.ink}
-                size={12}
-                weight={650}
+              <circle
+                cx={x + 3.5}
+                cy={top + rowHeight / 2}
+                r={3.5}
+                fill={languageColor(language.name)}
               />
               <SvgText
-                x={x + itemWidth - 4}
-                y={y}
-                value={`${language.percentage}%`}
+                x={x + 13}
+                y={baseline(top, t.meta)}
+                value={fitText(
+                  language.name,
+                  columnWidth - 13 - percent.length * t.meta * 0.6 - 6,
+                  t.meta,
+                )}
                 fill={tokens.ink}
-                size={12}
-                weight={750}
+                size={t.meta}
+                opacity={0.6}
+              />
+              <SvgText
+                x={x + columnWidth}
+                y={baseline(top, t.meta)}
+                value={percent}
+                fill={tokens.ink}
+                size={t.meta}
+                weight={700}
                 anchor="end"
-                opacity={0.7}
               />
             </g>
           );
@@ -585,63 +588,49 @@ const BlockContent = ({
 
   const solved = asRecord(data.solved);
   const stats = [
-    { label: locale === 'ru' ? 'Решено' : 'Solved', value: solved.all },
-    config.showRanking !== false
-      ? { label: locale === 'ru' ? 'Рейтинг' : 'Ranking', value: data.ranking }
-      : null,
+    { label: labels.solved, value: solved.all },
+    config.showRanking !== false ? { label: labels.ranking, value: data.ranking } : null,
     config.showContestRating !== false
-      ? {
-          label: locale === 'ru' ? 'Рейтинг соревнований' : 'Contest rating',
-          value: data.contestRating,
-        }
+      ? { label: labels.contestRating, value: data.contestRating }
       : null,
-  ].filter((item): item is { label: string; value: unknown } => item !== null);
-  const statWidth = contentWidth / Math.max(stats.length, 1);
-  const statsY = padding + 50;
+  ].filter((item): item is StatItem => item !== null);
+  const statsTop = t.heading * BLOCK_LINE_HEIGHT + t.sectionGap;
+  const difficultyTop = statsTop + statsRowHeight(t) + t.sectionGap;
+  const difficultyWidth = (frame.width - t.columnGap * 2) / 3;
   const difficulty = [
-    { label: 'Easy', value: solved.easy, color: '#22a477' },
-    { label: 'Medium', value: solved.medium, color: '#c88724' },
-    { label: 'Hard', value: solved.hard, color: '#d45c71' },
+    { label: labels.easy, value: solved.easy, color: difficultyColors.easy },
+    { label: labels.medium, value: solved.medium, color: difficultyColors.medium },
+    { label: labels.hard, value: solved.hard, color: difficultyColors.hard },
   ];
   return (
     <>
-      <SvgText
-        x={padding}
-        y={padding + 18}
-        value={locale === 'ru' ? 'Профиль LeetCode' : 'LeetCode profile'}
-        fill={tokens.ink}
-        size={18}
-        weight={800}
+      <TitleRow
+        title={labels.leetcodeProfile}
+        meta={`@${asString(data.username, username || 'username')}`}
+        frame={frame}
+        tokens={tokens}
       />
-      <SvgText
-        x={padding}
-        y={padding + 38}
-        value={`@${asString(data.username, username || 'username')}`}
-        fill={tokens.ink}
-        size={12}
-        opacity={0.64}
-      />
-      {stats.map((item, index) => (
-        <Stat
-          key={item.label}
-          x={padding + index * statWidth}
-          y={statsY}
-          label={item.label}
-          value={item.value}
-          tokens={tokens}
-        />
-      ))}
+      <StatsRow top={statsTop} items={stats} frame={frame} tokens={tokens} />
       {difficulty.map((item, index) => {
-        const x = padding + index * (contentWidth / difficulty.length);
+        const x = index * (difficultyWidth + t.columnGap);
         return (
           <g key={item.label}>
-            <circle cx={x + 4} cy={statsY + 78} r={3.5} fill={item.color} />
+            <circle
+              cx={x + 3.5}
+              cy={difficultyTop + (t.meta * BLOCK_LINE_HEIGHT) / 2}
+              r={3.5}
+              fill={item.color}
+            />
             <SvgText
-              x={x + 14}
-              y={statsY + 82}
-              value={`${item.label} ${formatNumber(item.value, '0')}`}
+              x={x + 13}
+              y={baseline(difficultyTop, t.meta)}
+              value={fitText(
+                `${item.label} ${formatNumber(item.value, '0')}`,
+                difficultyWidth - 13,
+                t.meta,
+              )}
               fill={tokens.ink}
-              size={11}
+              size={t.meta}
               opacity={0.6}
             />
           </g>
@@ -656,7 +645,7 @@ export const WidgetCanvas = ({
   blocks,
   palette = 'lavender',
   paletteMode = 'auto',
-  columns = 1,
+  columns = MAX_GRID_COLUMNS,
   width = 600,
   height = 400,
   outputWidth,
@@ -664,30 +653,19 @@ export const WidgetCanvas = ({
   renderedBlocks = [],
   avatarDataUris,
   locale = 'en',
-  showChrome = false,
 }: WidgetCanvasProps) => {
   const canvasWidth = clamp(Math.round(width), 280, 1600);
   const canvasHeight = clamp(Math.round(height), 160, 1200);
   const svgWidth = outputWidth ?? canvasWidth;
   const svgHeight = outputHeight ?? canvasHeight;
-  const paletteSet = paletteTokens[palette] ?? paletteTokens.lavender;
+  const paletteSet = paletteTokens[palette as PaletteName] ?? paletteTokens.lavender;
   const tokens = paletteMode === 'dark' ? paletteSet.dark : paletteSet.light;
-  const gridColumns = clamp(Math.round(columns), 1, 2);
-  const padding = Math.min(34, Math.max(20, canvasWidth * 0.04));
-  const gap = 18;
-  const chromeHeight = showChrome ? 30 : 0;
-  const rows = Math.max(
-    1,
-    ...blocks.map((block) => {
-      const layout = layoutOf(block);
-      return layout.y + layout.height;
-    }),
-  );
-  const blockAreaTop = padding + chromeHeight;
-  const blockAreaHeight = canvasHeight - blockAreaTop - padding - (showChrome ? 28 : 0);
-  const cellWidth = (canvasWidth - padding * 2 - gap * (gridColumns - 1)) / gridColumns;
-  const cellHeight = Math.max(1, (blockAreaHeight - gap * (rows - 1)) / rows);
+  const gridColumns = clamp(Math.round(columns), 1, MAX_GRID_COLUMNS);
+  const layouts = blocks.map(layoutOf);
+  const rows = gridRows(layouts);
   const blockSurface = mixHex(tokens.surface, tokens.soft, 0.72);
+  // CSS `radial-gradient(circle at 92% 2%, … 32%)` sizes to the farthest corner (bottom-left).
+  const glowRadius = Math.hypot(canvasWidth * 0.92, canvasHeight * 0.98) * 0.32;
 
   return (
     <svg
@@ -711,115 +689,88 @@ export const WidgetCanvas = ({
           gradientUnits="userSpaceOnUse"
           cx={canvasWidth * 0.92}
           cy={canvasHeight * 0.02}
-          r={Math.max(canvasWidth, canvasHeight) * 0.32}
+          r={glowRadius}
         >
           <stop offset="0%" stopColor={tokens.accent} stopOpacity={0.22} />
           <stop offset="100%" stopColor={tokens.accent} stopOpacity={0} />
         </radialGradient>
-        <filter id="widget-shadow" x="-20%" y="-20%" width="140%" height="160%">
-          <feDropShadow
-            dx="0"
-            dy="22"
-            stdDeviation="30"
-            floodColor={tokens.accent}
-            floodOpacity={0.18}
-          />
-        </filter>
       </defs>
       <rect
         x={0.5}
         y={0.5}
         width={canvasWidth - 1}
         height={canvasHeight - 1}
-        rx={28}
+        rx={CANVAS_RADIUS}
         fill="url(#widget-surface)"
-        stroke={tokens.accent}
-        strokeOpacity={0.25}
-        filter="url(#widget-shadow)"
       />
       <rect
-        x={1}
-        y={1}
-        width={canvasWidth - 2}
-        height={canvasHeight - 2}
-        rx={27.5}
+        x={0.5}
+        y={0.5}
+        width={canvasWidth - 1}
+        height={canvasHeight - 1}
+        rx={CANVAS_RADIUS}
         fill="url(#widget-accent-glow)"
+        stroke={tokens.accent}
+        strokeOpacity={0.25}
       />
-      {showChrome && (
-        <g>
-          <circle cx={padding + 4} cy={padding - 8} r={4} fill={tokens.accent} />
-          <SvgText
-            x={padding + 18}
-            y={padding - 4}
-            value="live widget preview"
-            fill={tokens.ink}
-            size={11}
-            weight={700}
-            opacity={0.58}
-          />
-        </g>
-      )}
-      <g fontFamily="Inter, Arial, sans-serif">
+      <g fontFamily={WIDGET_FONT_FAMILY}>
         {blocks.length === 0 && (
           <SvgText
             x={canvasWidth / 2}
             y={canvasHeight / 2}
-            value={
-              locale === 'ru'
-                ? 'Добавьте блок, чтобы начать.'
-                : 'Add a block to start shaping your widget.'
-            }
+            value={widgetLabels(locale).empty}
             fill={tokens.ink}
             size={14}
             anchor="middle"
             opacity={0.6}
           />
         )}
-        {blocks.map((block) => {
-          const layout = layoutOf(block);
-          const x = padding + layout.x * (cellWidth + gap);
-          const y = blockAreaTop + layout.y * (cellHeight + gap);
-          const blockWidth = cellWidth * layout.width + gap * (layout.width - 1);
-          const blockHeight = cellHeight * layout.height + gap * (layout.height - 1);
-          const rendered = renderedBlocks.find((item) => item.id === block.id);
+        {blocks.map((block, index) => {
+          const box = blockBox(layouts[index], {
+            width: canvasWidth,
+            height: canvasHeight,
+            columns: gridColumns,
+            rows,
+          });
+          const inset = BLOCK_BORDER + BLOCK_PADDING;
+          const contentWidth = blockContentWidth(box.width);
+          const frame = {
+            width: contentWidth,
+            height: Math.max(box.height - inset * 2, 0),
+            typography: blockTypography(contentWidth),
+          };
+          const clipId = `block-${safeId(block.id)}`;
           return (
             <g key={block.id}>
+              <clipPath id={clipId}>
+                <rect x={box.x} y={box.y} width={box.width} height={box.height} rx={BLOCK_RADIUS} />
+              </clipPath>
               <rect
-                x={x}
-                y={y}
-                width={blockWidth}
-                height={blockHeight}
-                rx={20}
+                x={box.x + 0.5}
+                y={box.y + 0.5}
+                width={box.width - 1}
+                height={box.height - 1}
+                rx={BLOCK_RADIUS}
                 fill={blockSurface}
                 stroke={tokens.accent}
                 strokeOpacity={0.18}
               />
-              <g transform={`translate(${x} ${y})`}>
-                <BlockContent
-                  block={block}
-                  rendered={rendered}
-                  tokens={tokens}
-                  locale={locale}
-                  width={blockWidth}
-                  height={blockHeight}
-                  avatarDataUris={avatarDataUris}
-                />
+              <g clipPath={`url(#${clipId})`}>
+                <g transform={`translate(${box.x + inset} ${box.y + inset})`}>
+                  <BlockContent
+                    block={block}
+                    rendered={renderedBlocks.find((item) => item.id === block.id)}
+                    tokens={tokens}
+                    locale={locale}
+                    frame={frame}
+                    avatarDataUri={avatarDataUris?.[block.id]}
+                  />
+                </g>
               </g>
             </g>
           );
         })}
       </g>
-      {showChrome && (
-        <SvgText
-          x={padding}
-          y={canvasHeight - padding + 4}
-          value={`${blocks.length} ${blocks.length === 1 ? 'block' : 'blocks'}`}
-          fill={tokens.ink}
-          size={11}
-          weight={700}
-          opacity={0.58}
-        />
-      )}
     </svg>
   );
 };
