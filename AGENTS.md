@@ -61,7 +61,8 @@ server/src/
 server/prisma/           schema.prisma + migrations
 client/src/              Feature-Sliced Design: app → pages → widgets → features → entities → shared
   entities/widget/       widget types, presets, palettes (mirror server registry) and the HTML/CSS WidgetCanvas used in editor/iframe
-  pages/widget-editor/   the grid editor (large file, autosave logic)
+  pages/widget-editor/   the grid editor: model/ (layout rules, normalizeWidget, useWidgetEditor
+                         = load/autosave/save race handling, useGridDrag, useBlockPreviews) + ui/ components
   shared/api/            fetch client with access-token + single-flight refresh
   shared/locale/         ru/en strings (content.ts)
   app/App.tsx            custom pathname-based router (no react-router)
@@ -87,7 +88,7 @@ Server imports must use `.js` extensions (NodeNext).
 
 - Prettier: 2 spaces, single quotes, trailing commas, width 100 (see `.prettierrc`). ESLint flat config in `eslint.config.ts`.
 - Match the surrounding style: arrow-function class members on controllers/services, zod `safeParse` + `AppError(400)`, CSS Modules per component.
-- Tests are colocated as `*.test.ts(x)`. Server tests use supertest against `createApp()` with Prisma mocked. The client currently has no tests.
+- Tests are colocated as `*.test.ts(x)`. Server tests use supertest against `createApp()` with Prisma mocked. Client tests use Testing Library in jsdom (`client/vitest.setup.ts` shims `matchMedia`/`ResizeObserver`); mock `@/shared/api` or stub `fetch` rather than hitting the network. Keep pure logic in `model/` or `lib/` files so it can be tested without rendering.
 - Conventional Commits: `feat(scope): …`, `fix(scope): …`, `chore: …`, `docs: …`. Branches: `feature/…`, `fix/…`.
 - Update `CHANGELOG.md` under `[Unreleased]` (Keep a Changelog sections: Added / Changed / Fixed / Security) for user-facing changes.
 - Don't commit `prompts/`, `.env`, or build output. `prompts/notes.md` is the owner's local backlog — read it for context, don't edit it unless asked.
