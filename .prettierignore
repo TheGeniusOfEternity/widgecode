@@ -4,3 +4,11 @@ coverage
 package-lock.json
 .opencode
 prompts
+# Vendored design skills (claudekit)
+.claude/skills/banner-design
+.claude/skills/brand
+.claude/skills/design
+.claude/skills/design-system
+.claude/skills/slides
+.claude/skills/ui-styling
+.claude/skills/ui-ux-pro-max
