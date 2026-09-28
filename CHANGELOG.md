@@ -13,6 +13,8 @@ All notable changes to this project are documented here.
 
 ### Changed
 
+- Split the 1,200-line widget editor into layout rules, state/autosave, drag and preview hooks, and focused UI components, and shared the embed snippet builder between the gallery and the editor.
+- Added client tests for widget rendering, scaling, editor layout rules and autosave, the API client token refresh, and the auth store.
 - Removed the automatic palette mode; widgets are either light or dark, and existing auto widgets open as light.
 - Unified widget rendering: the editor, public page, iframe embed and SVG export now share one geometry and typography module, so widgets look identical everywhere.
 - The editor and public page render the widget at its real size and scale it to fit, instead of reflowing it to the screen width.
