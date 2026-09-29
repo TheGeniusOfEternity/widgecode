@@ -69,3 +69,107 @@ it('caches failed lookups briefly and shortens the widget cache TTL', async () =
   expect(first.cacheTtlSeconds).toBe(60);
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
+
+describe('GitHub languages', () => {
+  const widget = {
+    config: {},
+    blocks: [
+      { id: 'block-1', type: 'github-langs', position: 0, config: { username: 'octo', limit: 2 } },
+    ],
+  };
+
+  afterEach(() => {
+    delete process.env.GITHUB_TOKEN;
+  });
+
+  it('sums exact language bytes across pages when a token is configured', async () => {
+    process.env.GITHUB_TOKEN = 'token';
+    const page = (edges: [string, number][], hasNextPage: boolean) => ({
+      ok: true,
+      json: async () => ({
+        data: {
+          user: {
+            repositories: {
+              pageInfo: { hasNextPage, endCursor: hasNextPage ? 'next' : null },
+              nodes: [
+                { languages: { edges: edges.map(([name, size]) => ({ size, node: { name } })) } },
+              ],
+            },
+          },
+        },
+      }),
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        page(
+          [
+            ['TypeScript', 600],
+            ['CSS', 100],
+          ],
+          true,
+        ),
+      )
+      .mockResolvedValueOnce(
+        page(
+          [
+            ['TypeScript', 200],
+            ['Go', 300],
+            ['CSS', 50],
+          ],
+          false,
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const rendered = await renderWidgetStats(widget);
+
+    expect(rendered.blocks[0].data).toEqual({
+      username: 'octo',
+      languages: [
+        { name: 'TypeScript', percentage: 73 },
+        { name: 'Go', percentage: 27 },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).variables.cursor).toBe('next');
+  });
+
+  it('reports a missing GitHub user from the GraphQL response', async () => {
+    process.env.GITHUB_TOKEN = 'token';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { user: null }, errors: [{ message: 'Could not resolve' }] }),
+      }),
+    );
+
+    const rendered = await renderWidgetStats(widget);
+
+    expect(rendered.blocks[0].error).toBe('GitHub profile not found');
+  });
+
+  it('falls back to repository sizes without a token', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [
+          { language: 'Rust', size: 30, fork: false },
+          { language: 'C', size: 10, fork: false },
+          { language: 'Go', size: 500, fork: true },
+        ],
+      }),
+    );
+
+    const rendered = await renderWidgetStats(widget);
+
+    expect(rendered.blocks[0].data).toMatchObject({
+      languages: [
+        { name: 'Rust', percentage: 75 },
+        { name: 'C', percentage: 25 },
+      ],
+    });
+  });
+});

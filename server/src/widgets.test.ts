@@ -338,3 +338,55 @@ it('reads the removed auto palette mode as light', async () => {
   expect(widgetConfigSchema.parse({}).paletteMode).toBe('light');
   expect(widgetConfigSchema.safeParse({ paletteMode: 'sepia' }).success).toBe(false);
 });
+
+it('does not expose the owner id in the public widget payload', async () => {
+  prismaMocks.widget.findFirst.mockResolvedValue({ ...widget, public: true, blocks: [] });
+
+  const response = await request(app).get(`/api/public/widgets/${widget.slug}`).expect(200);
+
+  expect(response.body.widget.slug).toBe(widget.slug);
+  expect(response.body.widget).not.toHaveProperty('userId');
+});
+
+it('accepts an empty text block while editing', async () => {
+  const { agent, token } = await authenticatedAgent();
+  const textBlock = {
+    id: 'block-1',
+    widgetId: widget.id,
+    type: 'text',
+    position: 0,
+    config: { text: 'Hello', layout: { x: 0, y: 0, width: 1, height: 1 } },
+    widget: { ...widget, blocks: [] },
+  };
+  prismaMocks.block.findFirst.mockResolvedValue(textBlock);
+  prismaMocks.block.update.mockImplementation(async ({ data }: { data: unknown }) => ({
+    ...textBlock,
+    ...(data as object),
+  }));
+
+  await agent
+    .put('/api/blocks/block-1')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ config: { text: '', layout: { x: 0, y: 0, width: 1, height: 1 } } })
+    .expect(200);
+});
+
+it('allows far more SVG image requests per IP than JSON widget requests', async () => {
+  process.env.VERCEL = '1';
+  const limitedApp = createApp();
+  prismaMocks.widget.findFirst.mockResolvedValue(null);
+  try {
+    for (let attempt = 0; attempt < 121; attempt += 1) {
+      await request(limitedApp)
+        .get(`/api/public/widgets/${widget.slug}/image.svg`)
+        .set('X-Forwarded-For', '198.51.100.7')
+        .expect(404);
+    }
+    await request(limitedApp)
+      .get(`/api/public/widgets/${widget.slug}`)
+      .set('X-Forwarded-For', '198.51.100.7')
+      .expect(404);
+  } finally {
+    delete process.env.VERCEL;
+  }
+});

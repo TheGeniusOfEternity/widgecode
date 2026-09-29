@@ -33,8 +33,16 @@ const publicWidgetLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-publicWidgetsRouter.use(publicWidgetLimiter);
-publicWidgetsRouter.get('/:slug/image.svg', widgetController.getPublicImage);
-publicWidgetsRouter.get('/:slug', widgetController.getPublic);
+// README images are fetched through GitHub's camo proxy, so many viewers share a few IPs.
+// Responses are CDN-cached; this limit only guards against cache-busting floods.
+const publicImageLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 1200,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+});
+
+publicWidgetsRouter.get('/:slug/image.svg', publicImageLimiter, widgetController.getPublicImage);
+publicWidgetsRouter.get('/:slug', publicWidgetLimiter, widgetController.getPublic);
 
 export { publicWidgetsRouter };
