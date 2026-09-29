@@ -1,0 +1,77 @@
+.page {
+  display: grid;
+  min-height: 70vh;
+  place-items: center;
+  padding: 24px 16px;
+}
+
+.card {
+  display: grid;
+  width: min(100%, 460px);
+  gap: 10px;
+  padding: 32px;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--action) 22%, var(--line));
+  border-radius: 28px;
+  background: linear-gradient(145deg, var(--glass-strong), var(--glass));
+  box-shadow: var(--shadow);
+}
+
+.card p,
+.card h1 {
+  margin: 0;
+}
+
+.code {
+  margin-bottom: 4px;
+  color: transparent;
+  background: linear-gradient(
+    135deg,
+    var(--action),
+    color-mix(in srgb, var(--action) 35%, var(--text))
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  font-size: clamp(64px, 18vw, 96px);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  line-height: 1;
+}
+
+.card p {
+  color: var(--action);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.card h1 {
+  font-size: clamp(24px, 7vw, 34px);
+  letter-spacing: -0.06em;
+}
+
+.text {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.detail {
+  overflow: hidden;
+  padding: 8px 12px;
+  color: var(--muted);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--action) 7%, transparent);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}

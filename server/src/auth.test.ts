@@ -6,6 +6,7 @@ const prismaMocks = vi.hoisted(() => ({
   user: {
     create: vi.fn(),
     findUnique: vi.fn(),
+    update: vi.fn(),
   },
   authSession: {
     create: vi.fn(),
@@ -60,7 +61,7 @@ it('registers a user and sets an httpOnly refresh cookie', async () => {
 
 it('protects the current user endpoint with a valid access token', async () => {
   prismaMocks.user.create.mockResolvedValue(user);
-  prismaMocks.user.findUnique.mockResolvedValue(user);
+  prismaMocks.user.findUnique.mockResolvedValue({ ...user, passwordHash: 'hash', yandexId: null });
   prismaMocks.authSession.create.mockResolvedValue({});
   const registerResponse = await request(app)
     .post('/api/auth/register')
@@ -69,7 +70,7 @@ it('protects the current user endpoint with a valid access token', async () => {
   await request(app)
     .get('/api/auth/me')
     .set('Authorization', `Bearer ${registerResponse.body.accessToken}`)
-    .expect(200, { user });
+    .expect(200, { user, methods: { password: true, yandex: false } });
 });
 
 it('rotates a refresh session and revokes it on logout', async () => {
@@ -158,5 +159,133 @@ describe('Yandex OAuth callback', () => {
     expect(prismaMocks.user.create).toHaveBeenCalledWith({
       data: { yandexId: 'ya-1', email: 'person@example.com', name: 'Person' },
     });
+  });
+});
+
+describe('Yandex account linking', () => {
+  const linkedUser = { ...user, passwordHash: 'hash', yandexId: null };
+
+  beforeEach(() => {
+    process.env.YANDEX_CLIENT_ID = 'client';
+    process.env.YANDEX_CLIENT_SECRET = 'secret';
+    process.env.YANDEX_REDIRECT_URI = 'http://localhost:4000/api/auth/yandex/callback';
+    process.env.CLIENT_URL = 'http://localhost:5173';
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'ya-token' }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'ya-1' }) }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // Registers to get a real refresh cookie, then runs the link callback with it.
+  const linkCallback = async () => {
+    prismaMocks.user.create.mockResolvedValue(user);
+    prismaMocks.authSession.create.mockResolvedValue({});
+    const register = await request(app)
+      .post('/api/auth/register')
+      .send({ email: user.email, password: 'secret123' });
+    const refreshCookie = register.headers['set-cookie'][0].split(';')[0];
+    const refreshToken = refreshCookie.split('=')[1];
+    const { createHash } = await import('node:crypto');
+    const sessionId = prismaMocks.authSession.create.mock.calls[0][0].data.id;
+    prismaMocks.authSession.findUnique.mockResolvedValue({
+      id: sessionId,
+      userId: user.id,
+      refreshTokenHash: createHash('sha256').update(refreshToken).digest('hex'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      user: linkedUser,
+    });
+    return request(app)
+      .get('/api/auth/yandex/callback?state=state-1&code=code-1')
+      .set('Cookie', [refreshCookie, 'widgecode_oauth_state=link:state-1'].join('; '));
+  };
+
+  it('starts linking with the intent bound to the OAuth state', async () => {
+    const response = await request(app).get('/api/auth/yandex?intent=link').expect(302);
+
+    expect(response.headers.location).toMatch(/^https:\/\/oauth\.yandex\.ru\/authorize\?/);
+    const state = new URL(response.headers.location).searchParams.get('state');
+    expect(response.headers['set-cookie'][0]).toContain(`widgecode_oauth_state=link%3A${state}`);
+  });
+
+  it('sends the user back to the app when Yandex is not configured', async () => {
+    delete process.env.YANDEX_CLIENT_SECRET;
+
+    await request(app)
+      .get('/api/auth/yandex')
+      .expect(302)
+      .expect('Location', 'http://localhost:5173/auth?oauth_error=oauth_not_configured');
+    await request(app)
+      .get('/api/auth/yandex?intent=link')
+      .expect(302)
+      .expect('Location', 'http://localhost:5173/account?link_error=yandex_failed');
+  });
+
+  it('links a free Yandex identity to the signed-in account', async () => {
+    prismaMocks.user.findUnique.mockResolvedValue(null);
+
+    const response = await linkCallback();
+
+    expect(response.headers.location).toBe('http://localhost:5173/account?linked=yandex');
+    expect(prismaMocks.user.update).toHaveBeenCalledWith({
+      where: { id: user.id },
+      data: { yandexId: 'ya-1' },
+    });
+  });
+
+  it('refuses a Yandex identity that belongs to another account', async () => {
+    prismaMocks.user.findUnique.mockResolvedValue({
+      ...user,
+      id: 'someone-else',
+      yandexId: 'ya-1',
+    });
+
+    const response = await linkCallback();
+
+    expect(response.headers.location).toBe('http://localhost:5173/account?link_error=yandex_taken');
+    expect(prismaMocks.user.update).not.toHaveBeenCalled();
+  });
+
+  it('requires a signed-in session to link', async () => {
+    const response = await request(app)
+      .get('/api/auth/yandex/callback?state=state-1&code=code-1')
+      .set('Cookie', 'widgecode_oauth_state=link:state-1');
+
+    expect(response.headers.location).toBe(
+      'http://localhost:5173/account?link_error=session_expired',
+    );
+  });
+
+  it('only unlinks Yandex when a password remains', async () => {
+    prismaMocks.user.create.mockResolvedValue(user);
+    prismaMocks.authSession.create.mockResolvedValue({});
+    const register = await request(app)
+      .post('/api/auth/register')
+      .send({ email: user.email, password: 'secret123' });
+    const auth = `Bearer ${register.body.accessToken}`;
+
+    prismaMocks.user.findUnique.mockResolvedValue({
+      ...user,
+      passwordHash: null,
+      yandexId: 'ya-1',
+    });
+    await request(app).delete('/api/auth/yandex').set('Authorization', auth).expect(409);
+
+    prismaMocks.user.findUnique.mockResolvedValue({
+      ...user,
+      passwordHash: 'hash',
+      yandexId: 'ya-1',
+    });
+    await request(app)
+      .delete('/api/auth/yandex')
+      .set('Authorization', auth)
+      .expect(200, { methods: { password: true, yandex: false } });
   });
 });

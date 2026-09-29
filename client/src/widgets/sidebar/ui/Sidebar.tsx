@@ -4,6 +4,7 @@ import {
   Globe,
   Moon,
   PencilToLine,
+  Person,
   Plus,
   Sun,
 } from '@gravity-ui/icons';
@@ -15,6 +16,7 @@ import { Button, Icon } from '@gravity-ui/uikit';
 
 export type SidebarLabels = {
   logout: string;
+  account: string;
   createWidget: string;
   openWidget: string;
   language: string;
@@ -33,6 +35,7 @@ type SidebarProps = {
   onCreateWidget: () => void;
   onOpenWidget: (id: string) => void;
   onLogout: () => void;
+  onOpenAccount: () => void;
   isLanguageLoading: boolean;
 };
 
@@ -47,6 +50,7 @@ export const Sidebar = ({
   onCreateWidget,
   onOpenWidget,
   onLogout,
+  onOpenAccount,
   isLanguageLoading,
 }: SidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -163,6 +167,27 @@ export const Sidebar = ({
             aria-label={labels.createWidget}
           >
             <Icon data={Plus} size={25} />
+          </Button>
+        </div>
+        <div className={styles.btnWrapper}>
+          <Button
+            onClick={onOpenAccount}
+            size="xl"
+            view="outlined-action"
+            className={[styles.button, !isExpanded ? styles.hidden : ''].join(' ')}
+          >
+            <span className={isLanguageLoading ? styles.textSkeleton : ''}>
+              {isLanguageLoading ? '' : labels.account}
+            </span>
+          </Button>
+          <Button
+            size="xl"
+            view="outlined-action"
+            className={styles.btnIcon}
+            onClick={onOpenAccount}
+            aria-label={labels.account}
+          >
+            <Icon data={Person} size={25} />
           </Button>
         </div>
         <div className={styles.btnWrapper}>

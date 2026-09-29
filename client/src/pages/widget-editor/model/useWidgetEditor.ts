@@ -54,6 +54,7 @@ export const useWidgetEditor = ({
   const [isSaving, setSaving] = useState(false);
   const [isDirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadStatus, setLoadStatus] = useState<number | null>(null);
   const widgetRef = useRef<Widget | null>(null);
   const savePromiseRef = useRef<Promise<void> | null>(null);
   const editVersionRef = useRef(0);
@@ -84,7 +85,10 @@ export const useWidgetEditor = ({
         setDirty(nextIsDirty);
       })
       .catch((loadError) => {
-        if (!cancelled) setError(errorMessage(loadError, messages.unavailable));
+        if (cancelled) return;
+        setError(errorMessage(loadError, messages.unavailable));
+        const status = (loadError as { status?: unknown } | null)?.status;
+        setLoadStatus(typeof status === 'number' ? status : 500);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -246,6 +250,7 @@ export const useWidgetEditor = ({
     setActivePanel,
     selectBlock,
     isLoading,
+    loadStatus,
     isSaving,
     isDirty,
     isDirtyRef,

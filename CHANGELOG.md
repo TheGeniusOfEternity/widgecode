@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Added an account page with sign-in methods: connect Yandex ID to an existing account, or disconnect it when a password remains.
+- Added 404 and 500 pages for unknown addresses, missing or unpublished widgets, failed widget loads, and unexpected rendering errors.
 - Added live SVG image export URLs and README-ready HTML snippets for public widgets.
 - Added proportional `width` and `height` query scaling for SVG image URLs.
 - Extracted shared widget SVG-rendering primitives for server-side export.
@@ -23,6 +25,7 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Starting Yandex sign-in when it isn't configured now returns to the app with an error message instead of a raw JSON response.
 - Fixed editor blocks jumping to another column or far down the grid when resized: the edited block stays in place, neighbours move down and gaps close; dropping a block onto one of the same size swaps them, and every moved block animates.
 - Fixed saving failing with a raw validation error after clearing a text block or entering an out-of-range language count; the count is now a 3–8 select and text/username fields have length limits.
 - Fixed legacy blocks without a stored layout all landing on the first row in the editor.
