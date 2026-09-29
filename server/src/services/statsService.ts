@@ -136,17 +136,82 @@ const getGithubStats = async (username: string) => {
   };
 };
 
-const getGithubLanguages = async (username: string, limit: number) => {
-  const repositories = await githubRepositories(username);
-  const totals = new Map<string, number>();
+type GithubLanguagesResponse = {
+  data?: {
+    user: {
+      repositories: {
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        nodes: { languages: { edges: { size: number; node: { name: string } }[] } }[];
+      };
+    } | null;
+  };
+  errors?: { message: string }[];
+};
 
-  for (const repository of repositories) {
+const GITHUB_LANGUAGE_PAGES = 5;
+
+// Exact byte counts per language across the user's public, non-fork repositories. GraphQL
+// always needs a token, so this is only used when GITHUB_TOKEN is configured.
+const githubLanguageBytes = (username: string) =>
+  getCached(`github:${username}:language-bytes`, async () => {
+    const query = `
+      query userLanguages($login: String!, $cursor: String) {
+        user(login: $login) {
+          repositories(first: 100, after: $cursor, ownerAffiliations: OWNER, isFork: false, privacy: PUBLIC) {
+            pageInfo { hasNextPage endCursor }
+            nodes { languages(first: 10, orderBy: { field: SIZE, direction: DESC }) { edges { size node { name } } } }
+          }
+        }
+      }
+    `;
+    const totals = new Map<string, number>();
+    let cursor: string | null = null;
+    for (let page = 0; page < GITHUB_LANGUAGE_PAGES; page += 1) {
+      const response: GithubLanguagesResponse = await fetchJson<GithubLanguagesResponse>(
+        'https://api.github.com/graphql',
+        {
+          method: 'POST',
+          headers: { ...githubHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, variables: { login: username, cursor } }),
+        },
+        githubRateLimitMessage,
+      );
+      if (response.errors?.length) {
+        if (response.data?.user === null) throw new AppError(404, 'GitHub profile not found');
+        throw new AppError(502, 'GitHub API returned an error');
+      }
+      const repositories = response.data?.user?.repositories;
+      if (!repositories) throw new AppError(404, 'GitHub profile not found');
+      for (const repository of repositories.nodes) {
+        for (const { size, node } of repository.languages.edges) {
+          totals.set(node.name, (totals.get(node.name) ?? 0) + size);
+        }
+      }
+      if (!repositories.pageInfo.hasNextPage) break;
+      cursor = repositories.pageInfo.endCursor;
+    }
+    return [...totals.entries()];
+  });
+
+// Without a token: each repository's whole size counted toward its primary language.
+const approximateLanguageBytes = async (username: string) => {
+  const totals = new Map<string, number>();
+  for (const repository of await githubRepositories(username)) {
     if (!repository.language || repository.fork) continue;
     totals.set(
       repository.language,
       (totals.get(repository.language) ?? 0) + Math.max(repository.size, 1),
     );
   }
+  return [...totals.entries()];
+};
+
+const getGithubLanguages = async (username: string, limit: number) => {
+  const totals = new Map(
+    process.env.GITHUB_TOKEN?.trim()
+      ? await githubLanguageBytes(username)
+      : await approximateLanguageBytes(username),
+  );
 
   const languages = [...totals.entries()].sort((left, right) => right[1] - left[1]).slice(0, limit);
   const total = languages.reduce((sum, [, bytes]) => sum + bytes, 0) || 1;

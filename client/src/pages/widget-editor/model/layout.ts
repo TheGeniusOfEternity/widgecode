@@ -38,8 +38,9 @@ export const getLayout = (block: WidgetBlock): BlockLayout => {
 /** Layout read from possibly legacy block config, clamped into the grid. */
 const layoutFromBlock = (block: WidgetBlock, index: number): BlockLayout => {
   const input = block.config.layout;
-  const value =
-    input && typeof input === 'object' ? (input as Partial<BlockLayout>) : DEFAULT_LAYOUT;
+  // Blocks saved before layouts existed are stacked by their order.
+  const value: Partial<BlockLayout> =
+    input && typeof input === 'object' ? (input as Partial<BlockLayout>) : { y: index };
   const x = clamp(typeof value.x === 'number' ? value.x : 0, 0, MAX_COLUMNS - 1);
   const width = clamp(typeof value.width === 'number' ? value.width : 1, 1, MAX_COLUMNS - x);
   return {
@@ -62,31 +63,89 @@ const layoutsOverlap = (left: BlockLayout, right: BlockLayout) =>
   left.y < right.y + right.height &&
   left.y + left.height > right.y;
 
-export const canPlaceBlock = (widget: Widget, blockId: string, nextLayout: BlockLayout) =>
-  nextLayout.x >= 0 &&
-  nextLayout.x + nextLayout.width <= MAX_COLUMNS &&
-  !widget.blocks.some(
-    (block) => block.id !== blockId && layoutsOverlap(nextLayout, getLayout(block)),
-  );
+// Highest row where the layout fits without overlapping `obstacles`.
+const firstFreeRow = (layout: BlockLayout, obstacles: BlockLayout[]) => {
+  for (let y = 0; y <= MAX_ROW; y += 1) {
+    const candidate = { ...layout, y };
+    if (!obstacles.some((item) => layoutsOverlap(item, candidate))) return y;
+  }
+  return layout.y;
+};
 
-/** First free spot for a block of the given size: the preferred cell, then scanning down column 0. */
-export const findPlacement = (
-  widget: Widget,
-  blockId: string,
-  width: number,
-  height: number,
-  preferredX: number,
-  preferredY: number,
-) => {
-  const startY = clamp(preferredY, 0, MAX_ROW);
-  const startX = clamp(preferredX, 0, MAX_COLUMNS - width);
-  const candidates = [
-    { x: startX, y: startY },
-    ...Array.from({ length: MAX_ROW + 1 - startY }, (_, index) => ({ x: 0, y: startY + index })),
-  ];
-  return candidates
-    .map(({ x, y }) => ({ x, y, width, height }))
-    .find((layout) => canPlaceBlock(widget, blockId, layout));
+/**
+ * Puts a block at `layout` (clamped into the grid) and repacks the rest with vertical
+ * compaction: other blocks, top to bottom, take the highest free row around the edited block,
+ * then the edited block rises into any space left above it. Resizing never throws a block to
+ * another column, dropping onto an occupied cell swaps places, and shrinking closes the gap.
+ */
+export const placeBlock = (widget: Widget, blockId: string, layout: BlockLayout): Widget => {
+  const width = clamp(layout.width, 1, MAX_COLUMNS);
+  const target = {
+    x: clamp(layout.x, 0, MAX_COLUMNS - width),
+    y: clamp(layout.y, 0, MAX_ROW),
+    width,
+    height: clamp(layout.height, 1, 2),
+  };
+  const others = widget.blocks
+    .filter((block) => block.id !== blockId)
+    .map((block) => ({ id: block.id, layout: { ...getLayout(block) } }))
+    .sort((left, right) => left.layout.y - right.layout.y || left.layout.x - right.layout.x);
+
+  const placed = new Map<string, BlockLayout>();
+  for (const other of others) {
+    other.layout.y = firstFreeRow(other.layout, [target, ...placed.values()]);
+    placed.set(other.id, other.layout);
+  }
+  target.y = firstFreeRow(target, [...placed.values()]);
+  placed.set(blockId, target);
+
+  return {
+    ...widget,
+    config: { ...widget.config, grid: { columns: MAX_COLUMNS } },
+    blocks: widget.blocks.map((block) => {
+      const next = placed.get(block.id)!;
+      const current = getLayout(block);
+      const unchanged =
+        current.x === next.x &&
+        current.y === next.y &&
+        current.width === next.width &&
+        current.height === next.height;
+      return unchanged ? block : { ...block, config: { ...block.config, layout: next } };
+    }),
+  };
+};
+
+/**
+ * Drops a block with its top-left at `cell`. Dropping exactly onto a block of the same size
+ * swaps the two; anything else goes through `placeBlock`.
+ */
+export const moveBlock = (widget: Widget, blockId: string, cell: { x: number; y: number }) => {
+  const moving = widget.blocks.find((block) => block.id === blockId);
+  if (!moving) return widget;
+  const from = getLayout(moving);
+  const to = { ...from, ...cell };
+  const occupant = widget.blocks.find((block) => {
+    const layout = getLayout(block);
+    return (
+      block.id !== blockId &&
+      layout.x === to.x &&
+      layout.y === to.y &&
+      layout.width === from.width &&
+      layout.height === from.height
+    );
+  });
+  if (!occupant) return placeBlock(widget, blockId, to);
+  return {
+    ...widget,
+    config: { ...widget.config, grid: { columns: MAX_COLUMNS } },
+    blocks: widget.blocks.map((block) =>
+      block.id === blockId
+        ? { ...block, config: { ...block.config, layout: to } }
+        : block.id === occupant.id
+          ? { ...block, config: { ...block.config, layout: from } }
+          : block,
+    ),
+  };
 };
 
 /** Rows shown while dragging: occupied rows plus one spare drop row (at least two). */
@@ -104,14 +163,6 @@ export const dragGridRows = (widget: Widget) =>
 
 export const occupiedRows = (widget: Widget) =>
   Math.max(1, ...widget.blocks.map((block) => getLayout(block).y + getLayout(block).height));
-
-export const withBlockLayout = (widget: Widget, blockId: string, layout: BlockLayout): Widget => ({
-  ...widget,
-  config: { ...widget.config, grid: { columns: MAX_COLUMNS } },
-  blocks: widget.blocks.map((block) =>
-    block.id === blockId ? { ...block, config: { ...block.config, layout } } : block,
-  ),
-});
 
 /**
  * Brings a widget from the API or local cache into the shape the editor works with: every block

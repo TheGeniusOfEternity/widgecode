@@ -5,11 +5,10 @@ import type { Widget } from '@/entities/widget/model';
 import { GRID_GAP } from '@shared/widget/geometry';
 import {
   MAX_COLUMNS,
-  canPlaceBlock,
   clamp,
-  findPlacement,
   getLayout,
-  withBlockLayout,
+  moveBlock,
+  placeBlock,
 } from '@/pages/widget-editor/model/layout';
 
 type Cell = { x: number; y: number };
@@ -78,63 +77,61 @@ export const useGridDrag = ({
     setDropCell(cell);
   };
 
+  // FLIP: every block that moves (the edited one and those pushed aside) animates from its old
+  // rect to the new one instead of jumping.
+  const animateLayoutChange = (applyChange: () => void) => {
+    const elements = Array.from(
+      gridRef.current?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [],
+    );
+    const before = new Map(elements.map((element) => [element, element.getBoundingClientRect()]));
+    flushSync(applyChange);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    requestAnimationFrame(() => {
+      for (const [element, first] of before) {
+        if (!element.isConnected || !element.animate) continue;
+        const last = element.getBoundingClientRect();
+        if (!last.width || !last.height) continue;
+        const moved =
+          first.left !== last.left ||
+          first.top !== last.top ||
+          first.width !== last.width ||
+          first.height !== last.height;
+        if (!moved) continue;
+        // The canvas may be scaled down; translate in the block's own (unscaled) pixels.
+        const scale = last.width / element.offsetWidth || 1;
+        element.animate(
+          [
+            {
+              transform: `translate(${(first.left - last.left) / scale}px, ${(first.top - last.top) / scale}px) scale(${first.width / last.width}, ${first.height / last.height})`,
+              transformOrigin: 'top left',
+            },
+            { transform: 'translate(0, 0) scale(1, 1)', transformOrigin: 'top left' },
+          ],
+          { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+        );
+      }
+    });
+  };
+
   const onPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     const current = widgetRef.current;
     if (!drag || drag.pointerId !== event.pointerId || !current) return;
-    const block = current.blocks.find((item) => item.id === drag.blockId);
-    if (block) {
-      const nextLayout = { ...getLayout(block), ...drag.preview };
-      if (canPlaceBlock(current, drag.blockId, nextLayout)) {
-        updateLocalWidget((widget) => withBlockLayout(widget, drag.blockId, nextLayout));
-      }
-    }
     event.currentTarget.releasePointerCapture(event.pointerId);
+    const block = current.blocks.find((item) => item.id === drag.blockId);
+    const layout = block ? getLayout(block) : null;
     endDrag();
-  };
-
-  // FLIP animation from the old block rect to the new one after a size change.
-  const animateResize = (blockId: string, applyChange: () => void) => {
-    const blockElement = gridRef.current?.querySelector<HTMLElement>(
-      `[data-block-id="${CSS.escape(blockId)}"]`,
-    );
-    const first = blockElement?.getBoundingClientRect();
-    flushSync(applyChange);
-    if (
-      !blockElement ||
-      !first ||
-      !blockElement.animate ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-      return;
-    }
-    requestAnimationFrame(() => {
-      const last = blockElement.getBoundingClientRect();
-      if (!last.width || !last.height) return;
-      // The canvas may be scaled down; translate in the block's own (unscaled) pixels.
-      const scale = last.width / blockElement.offsetWidth || 1;
-      blockElement.animate(
-        [
-          {
-            transform: `translate(${(first.left - last.left) / scale}px, ${(first.top - last.top) / scale}px) scale(${first.width / last.width}, ${first.height / last.height})`,
-            transformOrigin: 'top left',
-          },
-          { transform: 'translate(0, 0) scale(1, 1)', transformOrigin: 'top left' },
-        ],
-        { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
-      );
-    });
+    if (!layout || (layout.x === drag.preview.x && layout.y === drag.preview.y)) return;
+    const cell = drag.preview;
+    animateLayoutChange(() => updateLocalWidget((widget) => moveBlock(widget, drag.blockId, cell)));
   };
 
   const resizeBlock = (blockId: string, width: number, height: number) => {
-    const current = widgetRef.current;
-    const block = current?.blocks.find((item) => item.id === blockId);
-    if (!current || !block) return;
-    const { x, y } = getLayout(block);
-    const nextLayout = findPlacement(current, blockId, width, height, x, y);
-    if (!nextLayout) return;
-    animateResize(blockId, () =>
-      updateLocalWidget((widget) => withBlockLayout(widget, blockId, nextLayout)),
+    const block = widgetRef.current?.blocks.find((item) => item.id === blockId);
+    if (!block) return;
+    const nextLayout = { ...getLayout(block), width, height };
+    animateLayoutChange(() =>
+      updateLocalWidget((widget) => placeBlock(widget, blockId, nextLayout)),
     );
   };
 
