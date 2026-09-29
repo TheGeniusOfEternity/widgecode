@@ -1,14 +1,15 @@
-import { ArrowLeft, CircleCheck, Key, Person } from '@gravity-ui/icons';
+import { ArrowLeft, CircleCheck, Envelope, Key, Person } from '@gravity-ui/icons';
 import { Button, Icon } from '@gravity-ui/uikit';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import type { AuthUser } from '@/features/auth';
+import { useAuthFeatures, type AuthUser } from '@/features/auth';
 import { API_BASE_URL, apiClient, getApiErrorMessage } from '@/shared/api';
 import { messages, type Locale } from '@/shared/locale/content';
 import { ErrorPage } from '@/widgets/error-page';
 import styles from '@/pages/account/ui/AccountPage.module.css';
 
 type SignInMethods = { password: boolean; yandex: boolean };
+type Account = { user: AuthUser; methods: SignInMethods; emailVerified: boolean };
 type Notice = { tone: 'success' | 'error'; text: string };
 
 type AccountPageProps = {
@@ -54,7 +55,9 @@ const MethodRow = ({
 
 export const AccountPage = ({ locale, onBack }: AccountPageProps) => {
   const t = messages[locale];
-  const [account, setAccount] = useState<{ user: AuthUser; methods: SignInMethods } | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
+  const features = useAuthFeatures();
+  const [isSendingVerification, setSendingVerification] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(() => noticeFromUrl(t));
   const [isUnlinking, setUnlinking] = useState(false);
@@ -63,7 +66,7 @@ export const AccountPage = ({ locale, onBack }: AccountPageProps) => {
     // The link result arrives as query params; drop them so a reload doesn't repeat the notice.
     if (window.location.search) window.history.replaceState({}, '', window.location.pathname);
     let cancelled = false;
-    apiClient<{ user: AuthUser; methods: SignInMethods }>('/auth/me')
+    apiClient<Account>('/auth/me')
       .then((response) => {
         if (!cancelled) setAccount(response);
       })
@@ -87,6 +90,21 @@ export const AccountPage = ({ locale, onBack }: AccountPageProps) => {
       setNotice({ tone: 'error', text: getApiErrorMessage(error) });
     } finally {
       setUnlinking(false);
+    }
+  };
+
+  const resendVerification = async () => {
+    setSendingVerification(true);
+    try {
+      await apiClient('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ locale }),
+      });
+      setNotice({ tone: 'success', text: t.verificationSent });
+    } catch (error) {
+      setNotice({ tone: 'error', text: getApiErrorMessage(error) });
+    } finally {
+      setSendingVerification(false);
     }
   };
 
@@ -143,6 +161,26 @@ export const AccountPage = ({ locale, onBack }: AccountPageProps) => {
 
         {methods ? (
           <ul className={styles.methods}>
+            {account?.user.email && (
+              <MethodRow
+                icon={<Icon data={Envelope} size={18} />}
+                title={`${t.emailAddress}: ${account.user.email}`}
+                connected={account.emailVerified}
+                status={account.emailVerified ? t.emailVerified : t.emailNotVerified}
+                action={
+                  !account.emailVerified &&
+                  features?.email && (
+                    <Button
+                      view="outlined-action"
+                      onClick={() => void resendVerification()}
+                      loading={isSendingVerification}
+                    >
+                      {t.resendVerification}
+                    </Button>
+                  )
+                }
+              />
+            )}
             <MethodRow
               icon={<Icon data={Key} size={18} />}
               title={t.passwordMethod}

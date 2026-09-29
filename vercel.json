@@ -6,6 +6,10 @@
   "outputDirectory": "client/dist",
   "rewrites": [
     {
+      "source": "/api/auth/:route(features|forgot-password|reset-password|verify-email|resend-verification)",
+      "destination": "/api/auth-resource?route=:route"
+    },
+    {
       "source": "/api/widgets/:widgetId/blocks/reorder",
       "destination": "/api/widgets-resource?resource=widget&widgetId=:widgetId&action=blocks"
     },

@@ -7,14 +7,17 @@ const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
 vi.mock('@/shared/api', () => ({
   API_BASE_URL: '/api',
   apiClient: api.apiClient,
+  configureApiAuth: vi.fn(),
   getApiErrorMessage: (error: unknown) => (error instanceof Error ? error.message : 'Error'),
 }));
 
 const user = { id: 'user-1', email: 'person@example.com', name: 'Person' };
 
-const mockMe = (methods: { password: boolean; yandex: boolean }) =>
+const mockMe = (methods: { password: boolean; yandex: boolean }, emailVerified = true) =>
   api.apiClient.mockImplementation(async (path: string, init?: RequestInit) => {
-    if (path === '/auth/me') return { user, methods };
+    if (path === '/auth/me') return { user, methods, emailVerified };
+    if (path === '/auth/features') return { email: true };
+    if (path === '/auth/resend-verification') return { ok: true };
     if (path === '/auth/yandex' && init?.method === 'DELETE') {
       return { methods: { ...methods, yandex: false } };
     }
@@ -63,4 +66,18 @@ it('shows the link result from the URL once and cleans the address', async () =>
     'Этот Яндекс ID уже привязан к другому аккаунту.',
   );
   expect(window.location.search).toBe('');
+});
+
+it('lets an unconfirmed user resend the confirmation email', async () => {
+  mockMe({ password: true, yandex: false }, false);
+  render(<AccountPage locale="en" onBack={() => {}} />);
+
+  expect(await screen.findByText('Not confirmed')).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button', { name: 'Send email' }));
+
+  expect(await screen.findByRole('status')).toHaveTextContent('Email sent. Check your inbox.');
+  expect(api.apiClient).toHaveBeenCalledWith('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ locale: 'en' }),
+  });
 });

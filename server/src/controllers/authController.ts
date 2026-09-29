@@ -4,6 +4,7 @@ import { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 
 import { AppError } from '@server/lib/errors.js';
+import { isEmailEnabled } from '@server/lib/mailer.js';
 import { type AuthRequest } from '@server/middleware/auth.js';
 import {
   authService,
@@ -12,11 +13,24 @@ import {
   type AuthResult,
 } from '@server/services/authService.js';
 
+const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email');
+const passwordSchema = z.string().min(6, 'Password must contain at least 6 characters').max(128);
+const localeSchema = z.enum(['ru', 'en']).catch('en');
+const tokenSchema = z.string().trim().min(1).max(200);
+
 const credentialsSchema = z.object({
-  email: z.string().trim().toLowerCase().email('Enter a valid email'),
-  password: z.string().min(6, 'Password must contain at least 6 characters').max(128),
+  email: emailSchema,
+  password: passwordSchema,
   name: z.string().trim().min(1).max(100).optional(),
+  locale: localeSchema.optional(),
 });
+
+const parseBody = <T>(schema: z.ZodType<T>, body: unknown): T => {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success)
+    throw new AppError(400, parsed.error.issues[0]?.message ?? 'Invalid request');
+  return parsed.data;
+};
 
 const cookieOptions = (maxAge: number) => ({
   httpOnly: true,
@@ -110,6 +124,51 @@ export class AuthController {
     try {
       await authService.logout(req.cookies[REFRESH_COOKIE_NAME]);
       clearRefreshCookie(res);
+      res.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  features = (_req: Request, res: Response) => {
+    res.json({ email: isEmailEnabled() });
+  };
+
+  forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = parseBody(z.object({ email: emailSchema, locale: localeSchema }), req.body);
+      await authService.requestPasswordReset(input.email, input.locale);
+      res.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = parseBody(z.object({ token: tokenSchema, password: passwordSchema }), req.body);
+      await authService.resetPassword(input.token, input.password);
+      clearRefreshCookie(res);
+      res.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = parseBody(z.object({ token: tokenSchema }), req.body);
+      await authService.verifyEmail(input.token);
+      res.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resendVerification = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const input = parseBody(z.object({ locale: localeSchema }), req.body ?? {});
+      await authService.sendEmailVerification(req.userId!, input.locale);
       res.json({ ok: true });
     } catch (error) {
       next(error);

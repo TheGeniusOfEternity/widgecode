@@ -24,6 +24,9 @@ type AuthPageProps = {
   onAuthTabChange: (tab: AuthTab) => void;
   isSubmitting: boolean;
   error: string | null;
+  notice?: string | null;
+  /** Shown on the sign-in tab when password reset is available. */
+  onForgotPassword?: () => void;
   onSubmit: (values: { email: string; password: string; name?: string }) => Promise<void>;
   onYandexAuth: () => void;
 };
@@ -34,6 +37,8 @@ export const AuthPage = ({
   onAuthTabChange,
   isSubmitting,
   error,
+  notice,
+  onForgotPassword,
   onSubmit,
   onYandexAuth,
 }: AuthPageProps) => {
@@ -103,15 +108,26 @@ export const AuthPage = ({
             type="password"
           />
           <div className={styles.authErrorSlot} aria-live="polite">
-            {error && (
+            {error ? (
               <p className={styles.authError} role="alert">
                 {localizeAuthError(error, locale)}
               </p>
+            ) : (
+              notice && (
+                <p className={styles.authNotice} role="status">
+                  {notice}
+                </p>
+              )
             )}
           </div>
           <Button view="action" size="xl" width="max" type="submit" loading={isSubmitting}>
             {t.continue}
           </Button>
+          {authTab === 'signin' && onForgotPassword && (
+            <Button view="flat" size="l" width="max" onClick={onForgotPassword}>
+              {t.forgotPassword}
+            </Button>
+          )}
         </form>
       </div>
     </Card>

@@ -16,6 +16,8 @@ const prismaMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@server/lib/prisma.js', () => ({ prisma: prismaMocks }));
+// Email flows are covered in emailFlows.test.ts; keep sign-up here free of mail side effects.
+vi.mock('@server/lib/mailer.js', () => ({ isEmailEnabled: () => false, sendEmail: vi.fn() }));
 
 const app = createApp();
 const user = { id: 'user-1', email: 'person@example.com', name: 'Person' };
@@ -70,7 +72,7 @@ it('protects the current user endpoint with a valid access token', async () => {
   await request(app)
     .get('/api/auth/me')
     .set('Authorization', `Bearer ${registerResponse.body.accessToken}`)
-    .expect(200, { user, methods: { password: true, yandex: false } });
+    .expect(200, { user, methods: { password: true, yandex: false }, emailVerified: false });
 });
 
 it('rotates a refresh session and revokes it on logout', async () => {
@@ -157,7 +159,12 @@ describe('Yandex OAuth callback', () => {
       /^http:\/\/localhost:5173\/auth\/callback#access_token=/,
     );
     expect(prismaMocks.user.create).toHaveBeenCalledWith({
-      data: { yandexId: 'ya-1', email: 'person@example.com', name: 'Person' },
+      data: {
+        yandexId: 'ya-1',
+        email: 'person@example.com',
+        name: 'Person',
+        emailVerifiedAt: expect.any(Date),
+      },
     });
   });
 });

@@ -18,6 +18,8 @@ const prismaMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@server/lib/prisma.js', () => ({ prisma: prismaMocks }));
+// Email flows are covered in emailFlows.test.ts; keep sign-up here free of mail side effects.
+vi.mock('@server/lib/mailer.js', () => ({ isEmailEnabled: () => false, sendEmail: vi.fn() }));
 
 const app = createApp();
 const user = { id: 'user-1', email: 'person@example.com', name: 'Person' };
