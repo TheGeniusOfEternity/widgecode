@@ -39,6 +39,15 @@ export const presets: PresetDefinition[] = [
     blockTypes: ['github-langs'],
   },
   {
+    id: 'github-activity',
+    label: 'GitHub Activity',
+    labelRu: 'Активность GitHub',
+    description: 'Commit streaks, a contribution heatmap and pull requests.',
+    descriptionRu: 'Серии коммитов, карта активности и pull requests.',
+    source: 'github',
+    blockTypes: ['github-commits', 'github-prs'],
+  },
+  {
     id: 'leetcode-profile',
     label: 'LeetCode Profile',
     labelRu: 'Профиль LeetCode',
@@ -65,6 +74,24 @@ export const blockDefinitions: {
     type: 'github-langs',
     label: 'GitHub Languages',
     description: 'Language distribution by repository size.',
+    source: 'github',
+  },
+  {
+    type: 'github-commits',
+    label: 'GitHub Activity',
+    description: 'Commits this year, streaks and a contribution heatmap.',
+    source: 'github',
+  },
+  {
+    type: 'github-prs',
+    label: 'Pull Requests',
+    description: 'Opened, merged and open pull requests.',
+    source: 'github',
+  },
+  {
+    type: 'github-status',
+    label: 'GitHub Status',
+    description: 'Your current GitHub status emoji and message.',
     source: 'github',
   },
   {
@@ -95,6 +122,9 @@ export const defaultBlockConfig = (type: BlockType): Record<string, unknown> => 
   if (type === 'github-stats')
     return { showRepositories: true, showFollowers: true, showFollowing: true };
   if (type === 'github-langs') return { limit: 5 };
+  if (type === 'github-commits') return { showStreak: true, showHeatmap: true };
+  if (type === 'github-prs') return { showBreakdown: true };
+  if (type === 'github-status') return {};
   return { showRanking: true, showContestRating: true };
 };
 

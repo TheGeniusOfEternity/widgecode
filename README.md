@@ -7,7 +7,7 @@ Personal live widgets for GitHub, LeetCode, and other sources. Build a widget, c
 ## Features
 
 - Personal widget gallery.
-- GitHub, language, and LeetCode statistics blocks.
+- GitHub stats, languages, activity heatmap, pull requests and status, and LeetCode blocks.
 - Grid editor with resizing and live preview.
 - Public pages and iframe embeds.
 - Email and Yandex ID authentication.

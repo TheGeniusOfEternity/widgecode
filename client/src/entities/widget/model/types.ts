@@ -1,7 +1,14 @@
 export type SourceType = 'github' | 'leetcode';
 export type PaletteId = 'lavender' | 'midnight' | 'mint' | 'sunset' | 'cobalt' | 'paper';
 export type PaletteMode = 'light' | 'dark';
-export type BlockType = 'text' | 'github-stats' | 'github-langs' | 'leetcode-stats';
+export type BlockType =
+  | 'text'
+  | 'github-stats'
+  | 'github-langs'
+  | 'github-commits'
+  | 'github-prs'
+  | 'github-status'
+  | 'leetcode-stats';
 
 export type BlockLayout = {
   x: number;

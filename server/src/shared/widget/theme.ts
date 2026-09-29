@@ -1,3 +1,5 @@
+import { estimateTextWidth } from './geometry.js';
+
 // Colors and labels shared by the HTML and SVG widget renderers.
 
 export type PaletteTokens = { accent: string; soft: string; ink: string; surface: string };
@@ -30,6 +32,9 @@ export const paletteTokens = {
 } as const satisfies Record<string, { light: PaletteTokens; dark: PaletteTokens }>;
 
 export type PaletteName = keyof typeof paletteTokens;
+
+// Contribution levels 0–4 as accent opacity; level 0 uses the ink color instead.
+export const heatmapOpacity = [0.1, 0.35, 0.55, 0.78, 1] as const;
 
 export const difficultyColors = { easy: '#22a477', medium: '#c88724', hard: '#d45c71' } as const;
 export const errorColor = '#a54352';
@@ -85,6 +90,18 @@ const labels = {
     defaultText: 'Build something worth sharing.',
     empty: 'Add a block to start shaping your widget.',
     loading: 'Loading...',
+    activity: 'Activity',
+    commits: 'Commits',
+    currentStreak: 'Day streak',
+    longestStreak: 'Best streak',
+    pullRequests: 'Pull requests',
+    total: 'Total',
+    merged: 'Merged',
+    open: 'Open',
+    closed: 'Closed',
+    status: 'Status',
+    busy: 'Busy',
+    noStatus: 'No status set',
   },
   ru: {
     repositories: 'Репозитории',
@@ -105,6 +122,18 @@ const labels = {
     defaultText: 'Создайте что-то достойное публикации.',
     empty: 'Добавьте блок, чтобы начать.',
     loading: 'Загрузка...',
+    activity: 'Активность',
+    commits: 'Коммиты',
+    currentStreak: 'Дней подряд',
+    longestStreak: 'Рекорд',
+    pullRequests: 'Pull requests',
+    total: 'Всего',
+    merged: 'Слито',
+    open: 'Открыто',
+    closed: 'Закрыто',
+    status: 'Статус',
+    busy: 'Занят',
+    noStatus: 'Статус не задан',
   },
 };
 
@@ -118,9 +147,6 @@ const compactNumber = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 1,
 });
 
-// Approximate advance of a bold digit at letter-spacing -0.06em, relative to font size.
-const STAT_GLYPH_WIDTH = 0.56;
-
 /**
  * Formats a stat value so it fits its column: full digits when they fit, compact notation
  * (24.3K) otherwise. Both renderers call this with the same inputs, so they agree.
@@ -129,7 +155,8 @@ export const formatStatValue = (value: unknown, columnWidth?: number, fontSize?:
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   const full = fullNumber.format(value);
   if (!columnWidth || !fontSize) return full;
-  return full.length * fontSize * STAT_GLYPH_WIDTH <= columnWidth
+  // Stat values render at weight 800 with letter-spacing -0.06em.
+  return estimateTextWidth(full, fontSize, { weight: 800, letterSpacing: -0.06 }) <= columnWidth
     ? full
     : compactNumber.format(value);
 };

@@ -82,3 +82,63 @@ export const blockTypography = (contentWidth: number) => {
 };
 
 export type BlockTypography = ReturnType<typeof blockTypography>;
+
+export const HEATMAP_CELL = 10;
+export const HEATMAP_GAP = 3;
+export const HEATMAP_HEIGHT = 7 * HEATMAP_CELL + 6 * HEATMAP_GAP;
+
+/** How many most recent weeks of the contribution calendar fit the block's content width. */
+export const heatmapWeeks = (contentWidth: number) =>
+  clamp(Math.floor((contentWidth + HEATMAP_GAP) / (HEATMAP_CELL + HEATMAP_GAP)), 4, 53);
+
+/**
+ * Last `weeks` columns of a Sunday-first contribution calendar as [week][weekday] levels;
+ * missing days (the future part of the current week) are null.
+ */
+export const heatmapColumns = (levels: number[], weeks: number, firstDayOfWeek = 0) => {
+  const padded: (number | null)[] = [...Array(firstDayOfWeek).fill(null), ...levels];
+  while (padded.length % 7 !== 0) padded.push(null);
+  const columns: (number | null)[][] = [];
+  for (let index = 0; index < padded.length; index += 7)
+    columns.push(padded.slice(index, index + 7));
+  return columns.slice(-weeks);
+};
+
+// Average advance per character class (em), measured for the widget font stack at weight 500.
+// SVG has no text layout, so these estimates decide truncation and number formatting in both
+// renderers; they are deliberately on the wide side so SVG text never overruns HTML.
+const GLYPH_WIDTHS = {
+  cyrillicUpper: 0.74,
+  cyrillicLower: 0.66,
+  latinUpper: 0.66,
+  latinLower: 0.52,
+  digit: 0.62,
+  space: 0.25,
+  percent: 1,
+  narrow: 0.3,
+  other: 0.62,
+};
+
+const glyphWidth = (character: string) => {
+  if (/[А-ЯЁ]/.test(character)) return GLYPH_WIDTHS.cyrillicUpper;
+  if (/[а-яё]/.test(character)) return GLYPH_WIDTHS.cyrillicLower;
+  if (/[A-Z]/.test(character)) return GLYPH_WIDTHS.latinUpper;
+  if (/[a-z]/.test(character)) return GLYPH_WIDTHS.latinLower;
+  if (/[0-9]/.test(character)) return GLYPH_WIDTHS.digit;
+  if (character === ' ') return GLYPH_WIDTHS.space;
+  if (character === '%') return GLYPH_WIDTHS.percent;
+  if (/[.,:;'!|il]/.test(character)) return GLYPH_WIDTHS.narrow;
+  return GLYPH_WIDTHS.other;
+};
+
+/** Estimated rendered width of `text` in px. `letterSpacing` is in em, as in the CSS. */
+export const estimateTextWidth = (
+  text: string,
+  size: number,
+  { weight = 500, letterSpacing = 0 }: { weight?: number; letterSpacing?: number } = {},
+) => {
+  const boldness = weight >= 700 ? 1.05 : 1;
+  let width = 0;
+  for (const character of text) width += glyphWidth(character) * boldness + letterSpacing;
+  return width * size;
+};

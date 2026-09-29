@@ -84,3 +84,116 @@ it('shows the empty state without blocks', () => {
   render(<WidgetCanvas blocks={[]} palette="lavender" locale="ru" />);
   expect(screen.getByText('Добавьте блок, чтобы начать.')).toBeInTheDocument();
 });
+
+describe('GitHub activity, pull request and status blocks', () => {
+  const block = (id: string, type: WidgetBlock['type'], config = {}, width = 1): WidgetBlock => ({
+    id,
+    type,
+    position: 0,
+    config: { username: 'octo', layout: { x: 0, y: 0, width, height: 1 }, ...config },
+  });
+
+  it('draws as many heatmap weeks as fit the block width', () => {
+    const levels = Array(371).fill(1);
+    const rendered = (id: string) => ({
+      id,
+      type: 'github-commits' as const,
+      position: 0,
+      data: { username: 'octo', commitsYear: 5, currentStreak: 1, longestStreak: 2, levels },
+    });
+    const { container, rerender } = render(
+      <WidgetCanvas
+        blocks={[block('narrow', 'github-commits')]}
+        palette="lavender"
+        renderedBlocks={[rendered('narrow')]}
+      />,
+    );
+    expect(container.querySelectorAll('[data-level]')).toHaveLength(17 * 7);
+
+    rerender(
+      <WidgetCanvas
+        blocks={[block('wide', 'github-commits', {}, 2)]}
+        palette="lavender"
+        renderedBlocks={[rendered('wide')]}
+      />,
+    );
+    // Full-width block: (510 + 3) / 13 → 39 weeks.
+    expect(container.querySelectorAll('[data-level]')).toHaveLength(39 * 7);
+  });
+
+  it('hides streaks and the heatmap when turned off', () => {
+    const { container } = render(
+      <WidgetCanvas
+        blocks={[block('c', 'github-commits', { showStreak: false, showHeatmap: false })]}
+        palette="lavender"
+        locale="ru"
+        renderedBlocks={[
+          {
+            id: 'c',
+            type: 'github-commits',
+            position: 0,
+            data: { username: 'octo', commitsYear: 5, levels: [1, 2, 3] },
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('Коммиты')).toBeInTheDocument();
+    expect(screen.queryByText('Дней подряд')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-level]')).toBeNull();
+  });
+
+  it('shows the pull request breakdown in percent', () => {
+    render(
+      <WidgetCanvas
+        blocks={[block('p', 'github-prs')]}
+        palette="lavender"
+        renderedBlocks={[
+          {
+            id: 'p',
+            type: 'github-prs',
+            position: 0,
+            data: { username: 'octo', total: 10, merged: 7, open: 1, closed: 2 },
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('70%')).toBeInTheDocument();
+    expect(screen.getByText('Closed')).toBeInTheDocument();
+  });
+
+  it('shows the status or an empty state', () => {
+    const { rerender } = render(
+      <WidgetCanvas
+        blocks={[block('s', 'github-status')]}
+        palette="lavender"
+        renderedBlocks={[
+          {
+            id: 's',
+            type: 'github-status',
+            position: 0,
+            data: { username: 'octo', emoji: '🌴', message: 'On vacation', busy: true },
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('🌴')).toBeInTheDocument();
+    expect(screen.getByText('On vacation')).toBeInTheDocument();
+    expect(screen.getByText('Busy')).toBeInTheDocument();
+
+    rerender(
+      <WidgetCanvas
+        blocks={[block('s', 'github-status')]}
+        palette="lavender"
+        renderedBlocks={[
+          {
+            id: 's',
+            type: 'github-status',
+            position: 0,
+            data: { username: 'octo', emoji: null, message: null, busy: false },
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('No status set')).toBeInTheDocument();
+  });
+});
