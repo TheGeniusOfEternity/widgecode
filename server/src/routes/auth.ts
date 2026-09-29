@@ -17,6 +17,7 @@ router.post('/refresh', sessionLimiter, authController.refresh);
 router.post('/logout', sessionLimiter, authController.logout);
 router.get('/me', sessionLimiter, authMiddleware, authController.me);
 router.get('/yandex', credentialsLimiter, authController.yandex);
+router.delete('/yandex', sessionLimiter, authMiddleware, authController.unlinkYandex);
 router.get('/yandex/callback', credentialsLimiter, authController.yandexCallback);
 
 export { router as authRouter };

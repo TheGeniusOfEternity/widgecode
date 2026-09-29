@@ -12,6 +12,7 @@ import { EditorCanvas } from '@/pages/widget-editor/ui/EditorCanvas';
 import { EditorHeader } from '@/pages/widget-editor/ui/EditorHeader';
 import { MobileFallback } from '@/pages/widget-editor/ui/MobileFallback';
 import { WidgetConfigPanel } from '@/pages/widget-editor/ui/WidgetConfigPanel';
+import { ErrorPage } from '@/widgets/error-page';
 import { messages, type Locale } from '@/shared/locale/content';
 import { AuthTransitionLoader } from '@/shared/ui/auth-transition-loader/AuthTransitionLoader';
 import styles from '@/pages/widget-editor/ui/WidgetEditorPage.module.css';
@@ -24,6 +25,7 @@ type WidgetEditorPageProps = {
   onBack: () => void;
   onOpenPublic: (slug: string) => void;
   onSave?: (widget: Widget) => void;
+  onHome: () => void;
 };
 
 const useIsMobile = () => {
@@ -44,6 +46,7 @@ export const WidgetEditorPage = ({
   onBack,
   onOpenPublic,
   onSave,
+  onHome,
 }: WidgetEditorPageProps) => {
   const t = messages[locale];
   const prefersReducedMotion = useReducedMotion();
@@ -75,10 +78,16 @@ export const WidgetEditorPage = ({
       </div>
     );
   if (!widget)
-    return (
-      <div className={styles.status} role="alert">
-        {editor.error || t.unavailable}
-      </div>
+    return editor.loadStatus === 404 ? (
+      <ErrorPage code={404} locale={locale} onHome={onHome} />
+    ) : (
+      <ErrorPage
+        code={500}
+        locale={locale}
+        detail={editor.error}
+        onHome={onHome}
+        onRetry={() => window.location.reload()}
+      />
     );
 
   return (

@@ -8,7 +8,8 @@ import {
   type PaletteMode,
   type PublicWidgetResponse,
 } from '@/entities/widget';
-import { getPublicWidget, PUBLIC_WIDGET_MESSAGE_SOURCE } from '@/shared/api';
+import { ErrorPage } from '@/widgets/error-page';
+import { ApiError, getPublicWidget, PUBLIC_WIDGET_MESSAGE_SOURCE } from '@/shared/api';
 import type { Locale } from '@/shared/locale/content';
 import { messages } from '@/shared/locale/content';
 import styles from '@/pages/public-widget/ui/PublicWidgetPage.module.css';
@@ -17,6 +18,7 @@ type PublicWidgetPageProps = {
   slug: string;
   locale: Locale;
   embed?: boolean;
+  onHome: () => void;
 };
 
 const DEFAULT_WIDGET_DIMENSIONS = { width: 600, height: 315 };
@@ -26,7 +28,12 @@ const readDimension = (name: 'width' | 'height', fallback: number) => {
   return Number.isFinite(value) && value > 0 ? Math.min(Math.round(value), 2000) : fallback;
 };
 
-export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPageProps) => {
+export const PublicWidgetPage = ({
+  slug,
+  locale,
+  embed = false,
+  onHome,
+}: PublicWidgetPageProps) => {
   const t = messages[locale];
   const initialDimensions = {
     width: readDimension('width', DEFAULT_WIDGET_DIMENSIONS.width),
@@ -34,6 +41,8 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
   };
   const [payload, setPayload] = useState<PublicWidgetResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,12 +51,14 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
         if (!cancelled) setPayload(nextPayload);
       })
       .catch((loadError) => {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : t.unavailable);
+        if (cancelled) return;
+        setError(loadError instanceof Error ? loadError.message : t.unavailable);
+        setErrorStatus(loadError instanceof ApiError ? loadError.status : null);
       });
     return () => {
       cancelled = true;
     };
-  }, [slug, t.unavailable]);
+  }, [attempt, slug, t.unavailable]);
 
   useEffect(() => {
     if (!embed || window.parent === window || (!payload && !error)) return;
@@ -61,6 +72,22 @@ export const PublicWidgetPage = ({ slug, locale, embed = false }: PublicWidgetPa
     );
   }, [embed, error, payload, slug]);
 
+  if (error && !embed)
+    return errorStatus === 404 ? (
+      <ErrorPage code={404} locale={locale} onHome={onHome} />
+    ) : (
+      <ErrorPage
+        code={500}
+        locale={locale}
+        detail={error}
+        onHome={onHome}
+        onRetry={() => {
+          setError(null);
+          setErrorStatus(null);
+          setAttempt((value) => value + 1);
+        }}
+      />
+    );
   if (error)
     return (
       <div className={`${styles.status} ${embed ? styles.embedStatus : ''}`} role="alert">

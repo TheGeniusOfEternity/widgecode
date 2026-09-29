@@ -19,5 +19,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
+    // Gravity UI ships ESM that imports its own CSS; let Vite transform it instead of Node.
+    server: { deps: { inline: [/@gravity-ui\//] } },
   },
 });

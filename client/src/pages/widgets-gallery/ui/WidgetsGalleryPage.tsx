@@ -29,6 +29,7 @@ type WidgetsGalleryPageProps = {
   onOpenPreview: (widget: WidgetCardData) => void;
   onCopyWidget: (widget: WidgetCardData, format: 'iframe' | 'svg') => void | Promise<void>;
   onLogout: () => void;
+  onOpenAccount: () => void;
   onDeleteWidget: (id: string) => void;
 };
 
@@ -46,12 +47,14 @@ export const WidgetsGalleryPage = ({
   onOpenPreview,
   onCopyWidget,
   onLogout,
+  onOpenAccount,
   onDeleteWidget,
 }: WidgetsGalleryPageProps) => {
   const t = messages[locale];
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const sidebarLabels: SidebarLabels = {
     logout: t.logout,
+    account: t.account,
     createWidget: t.createWidget,
     openWidget: t.open,
     language: t.language,
@@ -87,6 +90,7 @@ export const WidgetsGalleryPage = ({
         onCreateWidget={() => setCreateModalOpen(true)}
         onOpenWidget={onOpenWidget}
         onLogout={onLogout}
+        onOpenAccount={onOpenAccount}
         isLanguageLoading={isLanguageLoading}
       />
       <section className={styles.galleryPage} id="widgets-gallery">

@@ -28,6 +28,14 @@ export class AuthModel {
     });
   }
 
+  async findUserById(id: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { id } });
+  }
+
+  async setYandexId(userId: string, yandexId: string | null): Promise<void> {
+    await prisma.user.update({ where: { id: userId }, data: { yandexId } });
+  }
+
   async findUserByYandexId(yandexId: string): Promise<User | null> {
     return prisma.user.findUnique({ where: { yandexId } });
   }

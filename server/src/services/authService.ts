@@ -39,6 +39,13 @@ const toPublicUser = (user: Pick<User, 'id' | 'email' | 'name'>): PublicUser => 
   name: user.name,
 });
 
+export type SignInMethods = { password: boolean; yandex: boolean };
+
+const signInMethods = (user: Pick<User, 'passwordHash' | 'yandexId'>): SignInMethods => ({
+  password: Boolean(user.passwordHash),
+  yandex: Boolean(user.yandexId),
+});
+
 const isPrismaUniqueError = (error: unknown) =>
   typeof error === 'object' &&
   error !== null &&
@@ -79,13 +86,14 @@ export class AuthService {
     return this.createSession(toPublicUser(user));
   }
 
-  async getCurrentUser(userId: string): Promise<PublicUser> {
-    const user = await authModel.findPublicUserById(userId);
+  async getCurrentUser(userId: string): Promise<{ user: PublicUser; methods: SignInMethods }> {
+    const user = await authModel.findUserById(userId);
     if (!user) throw new AppError(401, 'User no longer exists');
-    return user;
+    return { user: toPublicUser(user), methods: signInMethods(user) };
   }
 
-  async refresh(refreshToken: string | undefined): Promise<AuthResult> {
+  /** The live session behind a refresh token, or a 401. Does not rotate the token. */
+  private async sessionFromRefreshToken(refreshToken: string | undefined) {
     if (!refreshToken) throw new AppError(401, 'Invalid or expired refresh token');
 
     const payload = (() => {
@@ -106,6 +114,11 @@ export class AuthService {
     ) {
       throw new AppError(401, 'Invalid or expired refresh token');
     }
+    return session;
+  }
+
+  async refresh(refreshToken: string | undefined): Promise<AuthResult> {
+    const session = await this.sessionFromRefreshToken(refreshToken);
 
     const nextRefreshToken = generateRefreshToken(session.userId, session.id);
     const nextExpiresAt = new Date(Date.now() + getRefreshTokenTtlMs());
@@ -186,6 +199,32 @@ export class AuthService {
     }
 
     return this.createSession(toPublicUser(user));
+  }
+
+  /**
+   * Attaches a Yandex identity to the account signed in with `refreshToken`. Used from the
+   * account page, where the user has already proven ownership of the account.
+   */
+  async linkYandex(refreshToken: string | undefined, code: string): Promise<void> {
+    const session = await this.sessionFromRefreshToken(refreshToken);
+    const yandexUser = await this.exchangeYandexCode(code);
+    if (!yandexUser.id) throw new AppError(502, 'Yandex user response is incomplete');
+
+    const owner = await authModel.findUserByYandexId(yandexUser.id);
+    if (owner && owner.id !== session.userId) {
+      throw new AppError(409, 'This Yandex ID is already linked to another account');
+    }
+    if (!owner) await authModel.setYandexId(session.userId, yandexUser.id);
+  }
+
+  async unlinkYandex(userId: string): Promise<SignInMethods> {
+    const user = await authModel.findUserById(userId);
+    if (!user) throw new AppError(401, 'User no longer exists');
+    if (!user.passwordHash) {
+      throw new AppError(409, 'Yandex ID is the only way to sign in to this account');
+    }
+    await authModel.setYandexId(userId, null);
+    return signInMethods({ ...user, yandexId: null });
   }
 
   private createSession(user: PublicUser): Promise<AuthResult> {

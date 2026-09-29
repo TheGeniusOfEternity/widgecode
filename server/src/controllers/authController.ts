@@ -53,6 +53,14 @@ const oauthErrorRedirect = (res: Response, message: string) => {
   res.redirect(url.toString());
 };
 
+type YandexIntent = 'login' | 'link';
+
+const accountRedirect = (res: Response, params: Record<string, string>) => {
+  const url = new URL('/account', clientUrl());
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  res.redirect(url.toString());
+};
+
 export class AuthController {
   register = async (req: Request, res: Response, next: NextFunction) => {
     const parsed = credentialsSchema.safeParse(req.body);
@@ -110,29 +118,45 @@ export class AuthController {
 
   me = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = await authService.getCurrentUser(req.userId!);
-      res.json({ user });
+      res.json(await authService.getCurrentUser(req.userId!));
     } catch (error) {
       next(error);
     }
   };
 
-  yandex = (_req: Request, res: Response, next: NextFunction) => {
+  unlinkYandex = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
+      res.json({ methods: await authService.unlinkYandex(req.userId!) });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  yandex = (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const intent: YandexIntent = req.query.intent === 'link' ? 'link' : 'login';
       const { state, url } = authService.startYandexAuth();
-      res.cookie(OAUTH_STATE_COOKIE_NAME, state, {
+      // The intent travels with the state, so it can't be swapped on the way back.
+      res.cookie(OAUTH_STATE_COOKIE_NAME, `${intent}:${state}`, {
         ...cookieOptions(10 * 60 * 1000),
         path: '/api/auth/yandex',
       });
       res.redirect(url);
     } catch (error) {
-      next(error);
+      if (!(error instanceof AppError)) return next(error);
+      // A full-page navigation: send the user back to the app, not to a JSON error.
+      if (req.query.intent === 'link') accountRedirect(res, { link_error: 'yandex_failed' });
+      else oauthErrorRedirect(res, 'oauth_not_configured');
     }
   };
 
   yandexCallback = async (req: Request, res: Response, next: NextFunction) => {
     const state = typeof req.query.state === 'string' ? req.query.state : '';
-    const savedState = req.cookies[OAUTH_STATE_COOKIE_NAME];
+    // Cookie is `intent:state`; a bare state (set before intents existed) means login.
+    const rawState = String(req.cookies[OAUTH_STATE_COOKIE_NAME] ?? '');
+    const separator = rawState.indexOf(':');
+    const intent = separator > 0 ? rawState.slice(0, separator) : 'login';
+    const savedState = separator > 0 ? rawState.slice(separator + 1) : rawState;
     res.clearCookie(OAUTH_STATE_COOKIE_NAME, { path: '/api/auth/yandex' });
 
     if (!state || !savedState || !sameValue(state, savedState)) {
@@ -143,6 +167,24 @@ export class AuthController {
     const code = typeof req.query.code === 'string' ? req.query.code : '';
     if (!code) {
       oauthErrorRedirect(res, 'oauth_code_missing');
+      return;
+    }
+
+    if (intent === 'link') {
+      try {
+        await authService.linkYandex(req.cookies[REFRESH_COOKIE_NAME], code);
+        accountRedirect(res, { linked: 'yandex' });
+      } catch (error) {
+        if (!(error instanceof AppError)) return next(error);
+        accountRedirect(res, {
+          link_error:
+            error.statusCode === 409
+              ? 'yandex_taken'
+              : error.statusCode === 401
+                ? 'session_expired'
+                : 'yandex_failed',
+        });
+      }
       return;
     }
 

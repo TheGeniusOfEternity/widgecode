@@ -9,6 +9,9 @@ import { LandingHeader, LandingPage } from '@/pages/landing';
 import { WidgetsGalleryPage } from '@/pages/widgets-gallery';
 import { PublicWidgetPage } from '@/pages/public-widget';
 import { WidgetEditorPage } from '@/pages/widget-editor';
+import { ErrorPage } from '@/widgets/error-page';
+import { AccountPage } from '@/pages/account';
+import { AppErrorBoundary } from '@/app/AppErrorBoundary';
 import {
   createWidget,
   deleteWidget,
@@ -31,7 +34,11 @@ import { ThemeReveal, type ThemeRevealState } from '@/shared/ui/theme-reveal';
 import styles from '@/app/App.module.css';
 import '@/app/Theme.css';
 
-type AppRoute = 'landing' | 'auth' | 'dashboard' | 'editor' | 'public' | 'callback';
+type AppRoute =
+  'landing' | 'auth' | 'dashboard' | 'editor' | 'account' | 'public' | 'callback' | 'not-found';
+
+const isPrivateRoute = (route: AppRoute) =>
+  route === 'dashboard' || route === 'editor' || route === 'account';
 
 const getPathname = () => window.location.pathname.replace(/\/+$/, '') || '/';
 
@@ -39,10 +46,12 @@ const getRoute = (): AppRoute => {
   const pathname = getPathname();
   if (pathname === '/dashboard') return 'dashboard';
   if (/^\/widgets\/[^/]+$/.test(pathname)) return 'editor';
+  if (pathname === '/account') return 'account';
   if (/^\/w\/[^/]+$/.test(pathname)) return 'public';
   if (pathname === '/auth/callback') return 'callback';
   if (['/auth', '/login', '/register'].includes(pathname)) return 'auth';
-  return 'landing';
+  if (pathname === '/') return 'landing';
+  return 'not-found';
 };
 
 const getRouteParam = (prefix: string) => getPathname().slice(prefix.length) || null;
@@ -84,8 +93,10 @@ const getDocumentTitle = (route: AppRoute, authTab: AuthTab) => {
     return authTab === 'signup' ? 'WidgeCode | Register' : 'WidgeCode | Sign in';
   if (route === 'dashboard') return 'WidgeCode | Dashboard';
   if (route === 'editor') return 'WidgeCode | Widget editor';
+  if (route === 'account') return 'WidgeCode | Account';
   if (route === 'public') return 'WidgeCode | Public widget';
   if (route === 'callback') return 'WidgeCode | Sign in';
+  if (route === 'not-found') return 'WidgeCode | Page not found';
   return 'WidgeCode';
 };
 
@@ -188,7 +199,7 @@ export const App = () => {
     if (
       isBootstrapped &&
       !isLoggingOut &&
-      (route === 'dashboard' || route === 'editor') &&
+      isPrivateRoute(route) &&
       authStatus === 'unauthenticated'
     ) {
       window.location.replace('/login');
@@ -311,15 +322,17 @@ export const App = () => {
   if (isEmbedRoute)
     return (
       <ThemeProvider theme={theme}>
-        <PublicWidgetPage slug={getRouteParam('/w/') ?? ''} locale={locale} embed />
+        <PublicWidgetPage
+          slug={getRouteParam('/w/') ?? ''}
+          locale={locale}
+          embed
+          onHome={() => navigate('/')}
+        />
       </ThemeProvider>
     );
   const isRedirectingFromPrivateRoute =
-    isBootstrapped &&
-    (route === 'dashboard' || route === 'editor') &&
-    authStatus === 'unauthenticated';
-  const isPrivateRouteTransitioning =
-    (route === 'dashboard' || route === 'editor') && !isAuthorized;
+    isBootstrapped && isPrivateRoute(route) && authStatus === 'unauthenticated';
+  const isPrivateRouteTransitioning = isPrivateRoute(route) && !isAuthorized;
   const isRedirectingFromAuthRoute =
     isBootstrapped && route === 'auth' && authStatus === 'authenticated';
   const isAuthTransitioning =
@@ -368,6 +381,7 @@ export const App = () => {
         }
         onCopyWidget={handleCopyWidget}
         onLogout={handleLogout}
+        onOpenAccount={() => navigate('/account')}
         onDeleteWidget={(id) => void handleDeleteWidget(id)}
       />
     ) : (
@@ -376,6 +390,7 @@ export const App = () => {
         locale={locale}
         onBack={() => navigate('/dashboard')}
         onOpenPublic={(slug) => navigate(`/w/${slug}`)}
+        onHome={() => navigate('/dashboard')}
         onSave={(saved) =>
           setVisibleWidgets((current) =>
             current.map((widget) => (widget.id === saved.id ? toCardData(saved) : widget)),
@@ -386,79 +401,92 @@ export const App = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <div className={styles.appShell}>
-        <div className={`${styles.orb} ${styles.orbLavender}`} />
-        <div className={`${styles.orb} ${styles.orbBlue}`} />
-        {isAuthTransitioning ? (
-          <AuthTransitionLoader locale={locale} reducedMotion={Boolean(prefersReducedMotion)} />
-        ) : (
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              className={styles.motionDiv}
-              key={route}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
-              transition={{ duration: 0.24, ease: 'easeOut' }}
-            >
-              {route === 'landing' && (
-                <LandingHeader
-                  locale={locale}
-                  theme={theme}
-                  isAuthorized={isAuthorized}
-                  onAuthNavigate={() => navigate('/register')}
-                  onDashboardNavigate={() => navigate('/dashboard')}
-                  onLogout={handleLogout}
-                  onLocaleToggle={handleLocaleToggle}
-                  onThemeToggle={handleThemeToggle}
-                />
-              )}
-              <main
-                className={
-                  isDashboardRoute
-                    ? styles.authorizedShell
-                    : route === 'auth' || route === 'dashboard' || route === 'editor'
-                      ? styles.authRoute
-                      : route === 'public'
-                        ? styles.publicRoute
-                        : styles.landingLayout
-                }
+      <AppErrorBoundary locale={locale}>
+        <div className={styles.appShell}>
+          <div className={`${styles.orb} ${styles.orbLavender}`} />
+          <div className={`${styles.orb} ${styles.orbBlue}`} />
+          {isAuthTransitioning ? (
+            <AuthTransitionLoader locale={locale} reducedMotion={Boolean(prefersReducedMotion)} />
+          ) : (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                className={styles.motionDiv}
+                key={route}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
+                transition={{ duration: 0.24, ease: 'easeOut' }}
               >
-                {isDashboardRoute ? (
-                  authorizedContent
-                ) : route === 'editor' && isAuthorized ? (
-                  <div className={styles.authorizedContent}>{authorizedContent}</div>
-                ) : route === 'auth' ? (
-                  <AuthPage
-                    authTab={authTab}
+                {route === 'landing' && (
+                  <LandingHeader
                     locale={locale}
-                    onAuthTabChange={handleAuthTabChange}
-                    isSubmitting={authStatus === 'loading'}
-                    error={authError || oauthError}
-                    onSubmit={handleAuthSubmit}
-                    onYandexAuth={() => window.location.assign(`${API_BASE_URL}/auth/yandex`)}
-                  />
-                ) : route === 'public' ? (
-                  <PublicWidgetPage
-                    slug={getRouteParam('/w/') ?? ''}
-                    locale={locale}
-                    embed={isEmbedRoute}
-                  />
-                ) : (
-                  <LandingPage
-                    locale={locale}
+                    theme={theme}
                     isAuthorized={isAuthorized}
-                    onAuthNavigate={() =>
-                      isAuthorized ? navigate('/dashboard') : navigate('/register')
-                    }
+                    onAuthNavigate={() => navigate('/register')}
+                    onDashboardNavigate={() => navigate('/dashboard')}
+                    onLogout={handleLogout}
+                    onLocaleToggle={handleLocaleToggle}
+                    onThemeToggle={handleThemeToggle}
                   />
                 )}
-              </main>
-            </motion.div>
-          </AnimatePresence>
-        )}
-        <ThemeReveal reveal={themeReveal} onComplete={() => setThemeReveal(null)} />
-      </div>
+                <main
+                  className={
+                    isDashboardRoute
+                      ? styles.authorizedShell
+                      : route === 'auth' || isPrivateRoute(route)
+                        ? styles.authRoute
+                        : route === 'public' || route === 'not-found'
+                          ? styles.publicRoute
+                          : styles.landingLayout
+                  }
+                >
+                  {isDashboardRoute ? (
+                    authorizedContent
+                  ) : route === 'account' && isAuthorized ? (
+                    <div className={styles.authorizedContent}>
+                      <AccountPage locale={locale} onBack={() => navigate('/dashboard')} />
+                    </div>
+                  ) : route === 'editor' && isAuthorized ? (
+                    <div className={styles.authorizedContent}>{authorizedContent}</div>
+                  ) : route === 'auth' ? (
+                    <AuthPage
+                      authTab={authTab}
+                      locale={locale}
+                      onAuthTabChange={handleAuthTabChange}
+                      isSubmitting={authStatus === 'loading'}
+                      error={authError || oauthError}
+                      onSubmit={handleAuthSubmit}
+                      onYandexAuth={() => window.location.assign(`${API_BASE_URL}/auth/yandex`)}
+                    />
+                  ) : route === 'public' ? (
+                    <PublicWidgetPage
+                      slug={getRouteParam('/w/') ?? ''}
+                      locale={locale}
+                      embed={isEmbedRoute}
+                      onHome={() => navigate('/')}
+                    />
+                  ) : route === 'not-found' ? (
+                    <ErrorPage
+                      code={404}
+                      locale={locale}
+                      onHome={() => navigate(isAuthorized ? '/dashboard' : '/')}
+                    />
+                  ) : (
+                    <LandingPage
+                      locale={locale}
+                      isAuthorized={isAuthorized}
+                      onAuthNavigate={() =>
+                        isAuthorized ? navigate('/dashboard') : navigate('/register')
+                      }
+                    />
+                  )}
+                </main>
+              </motion.div>
+            </AnimatePresence>
+          )}
+          <ThemeReveal reveal={themeReveal} onComplete={() => setThemeReveal(null)} />
+        </div>
+      </AppErrorBoundary>
     </ThemeProvider>
   );
 };

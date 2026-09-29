@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Added an account page with sign-in methods: connect Yandex ID to an existing account, or disconnect it when a password remains.
+- Added 404 and 500 pages for unknown addresses, missing or unpublished widgets, failed widget loads, and unexpected rendering errors.
 - Added live SVG image export URLs and README-ready HTML snippets for public widgets.
 - Added proportional `width` and `height` query scaling for SVG image URLs.
 - Extracted shared widget SVG-rendering primitives for server-side export.
@@ -23,6 +25,7 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Starting Yandex sign-in when it isn't configured now returns to the app with an error message instead of a raw JSON response.
 - Fixed smaller block padding and larger fonts in SVG exports compared to the editor and iframe.
 - Fixed widget size differences between the editor, public page, iframe and SVG export caused by viewport-relative padding.
 - Removed the drop shadow that tinted the transparent corners of exported SVG and iframe widgets.
