@@ -2,7 +2,7 @@ import { ThemeProvider } from '@gravity-ui/uikit';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 
-import { useAuthStore } from '@/features/auth';
+import { useAuthFeatures, useAuthStore } from '@/features/auth';
 import type { WidgetCardData, Widget } from '@/entities/widget';
 import { AuthPage, type AuthTab } from '@/pages/auth';
 import { LandingHeader, LandingPage } from '@/pages/landing';
@@ -11,6 +11,9 @@ import { PublicWidgetPage } from '@/pages/public-widget';
 import { WidgetEditorPage } from '@/pages/widget-editor';
 import { ErrorPage } from '@/widgets/error-page';
 import { AccountPage } from '@/pages/account';
+import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-reset';
+import { VerifyEmailPage } from '@/pages/verify-email';
+import { messages } from '@/shared/locale/content';
 import { AppErrorBoundary } from '@/app/AppErrorBoundary';
 import {
   createWidget,
@@ -35,7 +38,17 @@ import styles from '@/app/App.module.css';
 import '@/app/Theme.css';
 
 type AppRoute =
-  'landing' | 'auth' | 'dashboard' | 'editor' | 'account' | 'public' | 'callback' | 'not-found';
+  | 'landing'
+  | 'auth'
+  | 'dashboard'
+  | 'editor'
+  | 'account'
+  | 'public'
+  | 'callback'
+  | 'forgot-password'
+  | 'reset-password'
+  | 'verify-email'
+  | 'not-found';
 
 const isPrivateRoute = (route: AppRoute) =>
   route === 'dashboard' || route === 'editor' || route === 'account';
@@ -47,6 +60,9 @@ const getRoute = (): AppRoute => {
   if (pathname === '/dashboard') return 'dashboard';
   if (/^\/widgets\/[^/]+$/.test(pathname)) return 'editor';
   if (pathname === '/account') return 'account';
+  if (pathname === '/forgot-password') return 'forgot-password';
+  if (pathname === '/reset-password') return 'reset-password';
+  if (pathname === '/verify-email') return 'verify-email';
   if (/^\/w\/[^/]+$/.test(pathname)) return 'public';
   if (pathname === '/auth/callback') return 'callback';
   if (['/auth', '/login', '/register'].includes(pathname)) return 'auth';
@@ -97,6 +113,9 @@ const getDocumentTitle = (route: AppRoute, authTab: AuthTab) => {
   if (route === 'public') return 'WidgeCode | Public widget';
   if (route === 'callback') return 'WidgeCode | Sign in';
   if (route === 'not-found') return 'WidgeCode | Page not found';
+  if (route === 'forgot-password' || route === 'reset-password')
+    return 'WidgeCode | Reset password';
+  if (route === 'verify-email') return 'WidgeCode | Confirm email';
   return 'WidgeCode';
 };
 
@@ -119,6 +138,7 @@ export const App = () => {
   const authUser = useAuthStore((state) => state.user);
   const authError = useAuthStore((state) => state.error);
   const prefersReducedMotion = useReducedMotion();
+  const authFeatures = useAuthFeatures();
   const widgetLoadKey =
     authStatus === 'authenticated' && (route === 'dashboard' || route === 'editor')
       ? `${authUser?.id ?? 'current'}:${route}`
@@ -262,7 +282,7 @@ export const App = () => {
       if (authTab === 'signin') {
         await useAuthStore.getState().login(values.email, values.password);
       } else {
-        await useAuthStore.getState().register(values.email, values.password, values.name);
+        await useAuthStore.getState().register(values.email, values.password, values.name, locale);
       }
       navigate('/dashboard');
     } catch {
@@ -435,7 +455,11 @@ export const App = () => {
                       ? styles.authorizedShell
                       : route === 'auth' || isPrivateRoute(route)
                         ? styles.authRoute
-                        : route === 'public' || route === 'not-found'
+                        : route === 'public' ||
+                            route === 'not-found' ||
+                            route === 'forgot-password' ||
+                            route === 'reset-password' ||
+                            route === 'verify-email'
                           ? styles.publicRoute
                           : styles.landingLayout
                   }
@@ -455,6 +479,14 @@ export const App = () => {
                       onAuthTabChange={handleAuthTabChange}
                       isSubmitting={authStatus === 'loading'}
                       error={authError || oauthError}
+                      notice={
+                        new URLSearchParams(window.location.search).get('password') === 'changed'
+                          ? messages[locale].passwordChanged
+                          : null
+                      }
+                      onForgotPassword={
+                        authFeatures?.email ? () => navigate('/forgot-password') : undefined
+                      }
                       onSubmit={handleAuthSubmit}
                       onYandexAuth={() => window.location.assign(`${API_BASE_URL}/auth/yandex`)}
                     />
@@ -464,6 +496,27 @@ export const App = () => {
                       locale={locale}
                       embed={isEmbedRoute}
                       onHome={() => navigate('/')}
+                    />
+                  ) : route === 'forgot-password' ? (
+                    <ForgotPasswordPage locale={locale} onBackToSignin={() => navigate('/login')} />
+                  ) : route === 'reset-password' ? (
+                    <ResetPasswordPage
+                      locale={locale}
+                      onDone={() => {
+                        // The reset revoked every session, including this browser's.
+                        useAuthStore.setState({
+                          token: null,
+                          user: null,
+                          status: 'unauthenticated',
+                        });
+                        navigate('/login?password=changed', true);
+                      }}
+                      onRequestNewLink={() => navigate('/forgot-password', true)}
+                    />
+                  ) : route === 'verify-email' ? (
+                    <VerifyEmailPage
+                      locale={locale}
+                      onContinue={() => navigate(isAuthorized ? '/dashboard' : '/login')}
                     />
                   ) : route === 'not-found' ? (
                     <ErrorPage

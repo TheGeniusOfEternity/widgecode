@@ -218,6 +218,13 @@
   line-height: 1.4;
 }
 
+.authNotice {
+  margin: 0;
+  color: #1d8a64;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .yandexMark {
   display: inline-grid;
   width: 28px;

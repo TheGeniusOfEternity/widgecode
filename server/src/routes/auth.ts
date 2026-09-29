@@ -16,6 +16,16 @@ router.post('/login', credentialsLimiter, authController.login);
 router.post('/refresh', sessionLimiter, authController.refresh);
 router.post('/logout', sessionLimiter, authController.logout);
 router.get('/me', sessionLimiter, authMiddleware, authController.me);
+router.get('/features', sessionLimiter, authController.features);
+router.post('/forgot-password', credentialsLimiter, authController.forgotPassword);
+router.post('/reset-password', credentialsLimiter, authController.resetPassword);
+router.post('/verify-email', credentialsLimiter, authController.verifyEmail);
+router.post(
+  '/resend-verification',
+  credentialsLimiter,
+  authMiddleware,
+  authController.resendVerification,
+);
 router.get('/yandex', credentialsLimiter, authController.yandex);
 router.delete('/yandex', sessionLimiter, authMiddleware, authController.unlinkYandex);
 router.get('/yandex/callback', credentialsLimiter, authController.yandexCallback);

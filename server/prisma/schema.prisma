@@ -8,15 +8,32 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String?  @unique
-  passwordHash String?
-  yandexId     String?  @unique
-  name         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  authSessions AuthSession[]
-  widgets      Widget[]
+  id              String        @id @default(cuid())
+  email           String?       @unique
+  emailVerifiedAt DateTime?
+  passwordHash    String?
+  yandexId        String?       @unique
+  name            String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  authSessions    AuthSession[]
+  authTokens      AuthToken[]
+  widgets         Widget[]
+}
+
+// One-time tokens sent by email (password reset, email verification). Only the SHA-256 hash
+// is stored; a token is consumed by setting usedAt.
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
 }
 
 model AuthSession {

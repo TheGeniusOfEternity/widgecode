@@ -21,7 +21,7 @@ type AuthState = {
   status: AuthStatus;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, name?: string, locale?: 'ru' | 'en') => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   refresh: () => Promise<boolean>;
@@ -57,12 +57,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  register: async (email, password, name) => {
+  register: async (email, password, name, locale) => {
     set({ status: 'loading', error: null });
     try {
       const response = await apiClient<AuthResponse>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, name: name || undefined }),
+        body: JSON.stringify({ email, password, name: name || undefined, locale }),
         skipAuthRefresh: true,
       });
       applyAuthResponse(set, response);

@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Added password reset by email ("Forgot password?" on sign-in) and email confirmation after sign-up, with a resend option on the account page. Emails are sent through Resend once `RESEND_API_KEY` and `EMAIL_FROM` are configured; until then the features stay hidden in production and emails are printed to the server log in development.
 - Added an account page with sign-in methods: connect Yandex ID to an existing account, or disconnect it when a password remains.
 - Added 404 and 500 pages for unknown addresses, missing or unpublished widgets, failed widget loads, and unexpected rendering errors.
 - Added live SVG image export URLs and README-ready HTML snippets for public widgets.

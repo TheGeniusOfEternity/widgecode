@@ -10,7 +10,13 @@ import {
   getRefreshTokenTtlMs,
   verifyRefreshToken,
 } from '@server/lib/jwt.js';
-import { authModel, type PublicUser } from '@server/models/authModel.js';
+import {
+  emailVerificationEmail,
+  passwordResetEmail,
+  type EmailLocale,
+} from '@server/lib/emailTemplates.js';
+import { isEmailEnabled, sendEmail } from '@server/lib/mailer.js';
+import { authModel, type AuthTokenType, type PublicUser } from '@server/models/authModel.js';
 
 export const REFRESH_COOKIE_NAME = 'widgecode_refresh';
 export const OAUTH_STATE_COOKIE_NAME = 'widgecode_oauth_state';
@@ -33,6 +39,18 @@ type YandexUserResponse = {
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+
+const clientUrl = () => process.env.CLIENT_URL ?? 'http://localhost:5173';
+
+// Tokens go in the URL hash so they never reach server logs, analytics or Referer headers.
+const clientLink = (path: string, token: string) => {
+  const url = new URL(path, clientUrl());
+  url.hash = new URLSearchParams({ token }).toString();
+  return url.toString();
+};
+
 const toPublicUser = (user: Pick<User, 'id' | 'email' | 'name'>): PublicUser => ({
   id: user.id,
   email: user.email,
@@ -53,7 +71,12 @@ const isPrismaUniqueError = (error: unknown) =>
   (error as { code?: string }).code === 'P2002';
 
 export class AuthService {
-  async register(input: { email: string; password: string; name?: string }): Promise<AuthResult> {
+  async register(input: {
+    email: string;
+    password: string;
+    name?: string;
+    locale?: EmailLocale;
+  }): Promise<AuthResult> {
     const passwordHash = await bcrypt.hash(input.password, 12);
     let user: PublicUser;
 
@@ -70,6 +93,13 @@ export class AuthService {
       throw error;
     }
 
+    if (isEmailEnabled()) {
+      // Awaited so serverless doesn't cut it off, but a mail failure must not fail sign-up;
+      // the user can resend from the account page.
+      await this.sendEmailVerification(user.id, input.locale ?? 'en').catch((error) =>
+        console.error('Could not send verification email', error),
+      );
+    }
     return this.createSession(user);
   }
 
@@ -86,10 +116,59 @@ export class AuthService {
     return this.createSession(toPublicUser(user));
   }
 
-  async getCurrentUser(userId: string): Promise<{ user: PublicUser; methods: SignInMethods }> {
+  async getCurrentUser(
+    userId: string,
+  ): Promise<{ user: PublicUser; methods: SignInMethods; emailVerified: boolean }> {
     const user = await authModel.findUserById(userId);
     if (!user) throw new AppError(401, 'User no longer exists');
-    return { user: toPublicUser(user), methods: signInMethods(user) };
+    return {
+      user: toPublicUser(user),
+      methods: signInMethods(user),
+      emailVerified: Boolean(user.emailVerifiedAt),
+    };
+  }
+
+  private async issueToken(userId: string, type: AuthTokenType, ttlMs: number) {
+    const token = randomBytes(32).toString('hex');
+    await authModel.issueAuthToken({
+      userId,
+      type,
+      tokenHash: hashToken(token),
+      expiresAt: new Date(Date.now() + ttlMs),
+    });
+    return token;
+  }
+
+  /** Always resolves the same way, so the response doesn't reveal which emails exist. */
+  async requestPasswordReset(email: string, locale: EmailLocale): Promise<void> {
+    if (!isEmailEnabled()) throw new AppError(503, 'Email is not configured');
+    const user = await authModel.findUserByEmail(email);
+    if (!user?.email) return;
+    const token = await this.issueToken(user.id, 'password_reset', PASSWORD_RESET_TTL_MS);
+    await sendEmail(passwordResetEmail(user.email, clientLink('/reset-password', token), locale));
+  }
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    const userId = await authModel.consumeAuthToken(hashToken(token), 'password_reset');
+    if (!userId) throw new AppError(400, 'This reset link is invalid or has expired');
+    await authModel.replacePassword(userId, await bcrypt.hash(password, 12));
+    // Following the emailed link proves ownership of the address.
+    await authModel.markEmailVerified(userId);
+  }
+
+  async sendEmailVerification(userId: string, locale: EmailLocale): Promise<void> {
+    if (!isEmailEnabled()) throw new AppError(503, 'Email is not configured');
+    const user = await authModel.findUserById(userId);
+    if (!user) throw new AppError(401, 'User no longer exists');
+    if (!user.email || user.emailVerifiedAt) return;
+    const token = await this.issueToken(user.id, 'email_verification', EMAIL_VERIFICATION_TTL_MS);
+    await sendEmail(emailVerificationEmail(user.email, clientLink('/verify-email', token), locale));
+  }
+
+  async verifyEmail(token: string): Promise<void> {
+    const userId = await authModel.consumeAuthToken(hashToken(token), 'email_verification');
+    if (!userId) throw new AppError(400, 'This confirmation link is invalid or has expired');
+    await authModel.markEmailVerified(userId);
   }
 
   /** The live session behind a refresh token, or a 401. Does not rotate the token. */
