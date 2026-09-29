@@ -26,6 +26,13 @@ All notable changes to this project are documented here.
 ### Fixed
 
 - Starting Yandex sign-in when it isn't configured now returns to the app with an error message instead of a raw JSON response.
+- Fixed editor blocks jumping to another column or far down the grid when resized: the edited block stays in place, neighbours move down and gaps close; dropping a block onto one of the same size swaps them, and every moved block animates.
+- Fixed saving failing with a raw validation error after clearing a text block or entering an out-of-range language count; the count is now a 3–8 select and text/username fields have length limits.
+- Fixed legacy blocks without a stored layout all landing on the first row in the editor.
+- Computed GitHub language shares from real per-language byte counts across all public repositories (when `GITHUB_TOKEN` is set) instead of each repository's total size on its primary language.
+- Gave public SVG images their own, much higher rate limit, since README views arrive through GitHub's image proxy from a few shared IPs.
+- Stopped exposing the widget owner's user id in the public widget API.
+- Removed unused `width`/`height` fields from widget create/update requests; size is always derived from the layout.
 - Fixed smaller block padding and larger fonts in SVG exports compared to the editor and iframe.
 - Fixed widget size differences between the editor, public page, iframe and SVG export caused by viewport-relative padding.
 - Removed the drop shadow that tinted the transparent corners of exported SVG and iframe widgets.

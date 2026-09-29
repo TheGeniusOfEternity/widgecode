@@ -5,6 +5,9 @@ import { sourceForBlock } from '@/pages/widget-editor/model/layout';
 import { messages, type Locale } from '@/shared/locale/content';
 import styles from '@/pages/widget-editor/ui/WidgetEditorPage.module.css';
 
+// Mirrors the server schema for `github-langs.limit` (3–8).
+const LANGUAGE_LIMITS = { default: 5, options: [3, 4, 5, 6, 7, 8] } as const;
+
 export const BlockConfigPanel = ({
   block,
   locale,
@@ -42,6 +45,7 @@ export const BlockConfigPanel = ({
           <span>{source === 'github' ? t.githubUsername : t.leetcodeUsername}</span>
           <TextInput
             size="l"
+            controlProps={{ maxLength: 100 }}
             value={String(block.config.username ?? '')}
             placeholder={source === 'github' ? 'octocat' : 'tourist'}
             onUpdate={(value) => onChange({ username: value })}
@@ -54,6 +58,7 @@ export const BlockConfigPanel = ({
             <span>{locale === 'ru' ? 'Текст' : 'Text'}</span>
             <TextArea
               size="l"
+              controlProps={{ maxLength: 500 }}
               value={String(block.config.text ?? '')}
               onUpdate={(value) => onChange({ text: value })}
             />
@@ -77,11 +82,15 @@ export const BlockConfigPanel = ({
       {block.type === 'github-langs' && (
         <label className={styles.field}>
           <span>{locale === 'ru' ? 'Количество языков' : 'Language count'}</span>
-          <TextInput
+          <Select
             size="l"
-            type="number"
-            value={String(Number(block.config.limit ?? 5))}
-            onUpdate={(value) => onChange({ limit: Number(value) })}
+            width="max"
+            value={[String(block.config.limit ?? LANGUAGE_LIMITS.default)]}
+            options={LANGUAGE_LIMITS.options.map((value) => ({
+              value: String(value),
+              content: String(value),
+            }))}
+            onUpdate={(value) => onChange({ limit: Number(value[0] ?? LANGUAGE_LIMITS.default) })}
           />
         </label>
       )}

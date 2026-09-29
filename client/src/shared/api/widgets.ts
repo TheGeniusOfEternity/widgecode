@@ -39,8 +39,6 @@ export const updateWidget = async (
   id: string,
   input: {
     title?: string;
-    width?: number;
-    height?: number;
     public?: boolean;
     config?: Partial<WidgetConfig>;
   },
