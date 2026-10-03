@@ -1,9 +1,11 @@
 import type { Widget, WidgetBlock } from '@/entities/widget/model';
 import {
   dragGridRows,
+  fitsRowLimit,
   getLayout,
   moveBlock,
   normalizeWidget,
+  packIntoRows,
   placeBlock,
 } from '@/pages/widget-editor/model/layout';
 
@@ -20,14 +22,14 @@ const widgetWith = (blocks: WidgetBlock[], config: Partial<Widget['config']> = {
   title: 'Widget',
   slug: 'widget',
   width: 600,
-  height: 315,
+  height: 318,
   public: false,
   createdAt: '',
   updatedAt: '',
   config: {
     palette: 'lavender',
     paletteMode: 'light',
-    grid: { columns: 2 },
+    grid: { columns: 4 },
     renderFormat: 'iframe',
     ...config,
   },
@@ -65,9 +67,9 @@ describe('placeBlock', () => {
     });
   });
 
-  it('shifts a block in the right column left when it grows wider than the grid allows', () => {
-    const next = layouts(placeBlock(grid, 'b', { x: 1, y: 0, width: 2, height: 1 }));
-    expect(next.b).toEqual({ x: 0, y: 0, width: 2, height: 1 });
+  it('shifts a block left when it grows wider than the grid allows', () => {
+    const next = layouts(placeBlock(grid, 'b', { x: 1, y: 0, width: 4, height: 1 }));
+    expect(next.b).toEqual({ x: 0, y: 0, width: 4, height: 1 });
     expect(next.a).toEqual({ x: 0, y: 1, width: 1, height: 1 });
   });
 
@@ -129,9 +131,49 @@ describe('moveBlock', () => {
   });
 });
 
-it('offers one spare drop row below the lowest block', () => {
+it('offers one spare drop row below the lowest block, within the row limit', () => {
   expect(dragGridRows(widgetWith([]))).toBe(2);
   expect(dragGridRows(widgetWith([block('a', { x: 0, y: 1, width: 1, height: 2 })]))).toBe(4);
+  expect(dragGridRows(widgetWith([block('a', { x: 0, y: 3, width: 2, height: 2 })]))).toBe(5);
+  // Migrated widgets taller than the limit get no extra row.
+  expect(dragGridRows(widgetWith([block('a', { x: 0, y: 4, width: 2, height: 2 })]))).toBe(6);
+});
+
+describe('row limit', () => {
+  const short = widgetWith([block('a', { x: 0, y: 0, width: 2, height: 2 })]);
+  const fiveRows = widgetWith([block('a', { x: 0, y: 3, width: 2, height: 2 })]);
+  const sixRows = widgetWith([block('a', { x: 0, y: 4, width: 2, height: 2 })]);
+  const eightRows = widgetWith([block('a', { x: 0, y: 6, width: 2, height: 2 })]);
+
+  it('allows changes up to 5 rows, or within the height a migrated widget already has', () => {
+    expect(fitsRowLimit(short, fiveRows)).toBe(true);
+    expect(fitsRowLimit(short, sixRows)).toBe(false);
+    expect(fitsRowLimit(sixRows, sixRows)).toBe(true);
+    expect(fitsRowLimit(sixRows, eightRows)).toBe(false);
+  });
+
+  it('packs a tall migrated widget into 5 rows keeping block sizes', () => {
+    // An old 2-column widget whose blocks were stacked in one column: 2×2 blocks at y 0, 2, 4.
+    const stacked = widgetWith([
+      block('a', { x: 0, y: 0, width: 2, height: 2 }),
+      block('b', { x: 0, y: 2, width: 2, height: 2 }),
+      block('c', { x: 0, y: 4, width: 4, height: 2 }),
+    ]);
+
+    expect(layouts(packIntoRows(stacked)!)).toEqual({
+      a: { x: 0, y: 0, width: 2, height: 2 },
+      b: { x: 2, y: 0, width: 2, height: 2 },
+      c: { x: 0, y: 2, width: 4, height: 2 },
+    });
+  });
+
+  it('reports widgets whose blocks cannot fit', () => {
+    const big = widgetWith([
+      block('a', { x: 0, y: 0, width: 4, height: 4 }),
+      block('b', { x: 0, y: 4, width: 4, height: 2 }),
+    ]);
+    expect(packIntoRows(big)).toBeNull();
+  });
 });
 
 describe('normalizeWidget', () => {
@@ -140,13 +182,13 @@ describe('normalizeWidget', () => {
       widgetWith([
         block(
           'a',
-          { x: 0, y: 0, width: 1, height: 1 },
-          { config: { username: 'octocat', layout: { x: 0, y: 0, width: 1, height: 1 } } },
+          { x: 0, y: 0, width: 2, height: 2 },
+          { config: { username: 'octocat', layout: { x: 0, y: 0, width: 2, height: 2 } } },
         ),
       ]),
     );
     expect(changed).toBe(false);
-    expect(widget.height).toBe(315);
+    expect(widget.height).toBe(318);
   });
 
   it('migrates legacy widgets and marks them for saving', () => {
@@ -166,13 +208,13 @@ describe('normalizeWidget', () => {
 
     expect(changed).toBe(true);
     expect(widget.config.paletteMode).toBe('light');
-    expect(widget.config.grid.columns).toBe(2);
+    expect(widget.config.grid.columns).toBe(4);
     expect(widget.blocks.map((item) => item.id)).toEqual(['first', 'second']);
     expect(widget.blocks[0].config).toMatchObject({
       username: 'octocat',
-      layout: { x: 1, y: 0, width: 1, height: 2 },
+      layout: { x: 3, y: 0, width: 1, height: 4 },
     });
-    expect(widget.blocks[1].config.layout).toEqual({ x: 0, y: 1, width: 1, height: 1 });
+    expect(widget.blocks[1].config.layout).toEqual({ x: 0, y: 1, width: 2, height: 2 });
     expect(widget.height).toBe(600);
   });
 });

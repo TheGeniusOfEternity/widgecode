@@ -7,7 +7,7 @@ const githubBlock: WidgetBlock = {
   id: 'gh',
   type: 'github-stats',
   position: 0,
-  config: { username: 'octocat', layout: { x: 0, y: 0, width: 1, height: 1 } },
+  config: { username: 'octocat', layout: { x: 0, y: 0, width: 2, height: 2 } },
 };
 
 const renderedGithub = {
@@ -89,11 +89,11 @@ it('shows the empty state without blocks', () => {
 });
 
 describe('GitHub activity, pull request and status blocks', () => {
-  const block = (id: string, type: WidgetBlock['type'], config = {}, width = 1): WidgetBlock => ({
+  const block = (id: string, type: WidgetBlock['type'], config = {}, width = 2): WidgetBlock => ({
     id,
     type,
     position: 0,
-    config: { username: 'octo', layout: { x: 0, y: 0, width, height: 1 }, ...config },
+    config: { username: 'octo', layout: { x: 0, y: 0, width, height: 2 }, ...config },
   });
 
   it('draws as many heatmap weeks as fit the block width', () => {
@@ -111,17 +111,18 @@ describe('GitHub activity, pull request and status blocks', () => {
         renderedBlocks={[rendered('narrow')]}
       />,
     );
-    expect(container.querySelectorAll('rect[width="10"][height="10"]')).toHaveLength(17 * 7);
+    // 2-column block: (244 + 3) / 13 → 19 weeks.
+    expect(container.querySelectorAll('rect[width="10"][height="10"]')).toHaveLength(19 * 7);
 
     rerender(
       <WidgetCanvas
-        blocks={[block('wide', 'github-commits', {}, 2)]}
+        blocks={[block('wide', 'github-commits', {}, 4)]}
         palette="lavender"
         renderedBlocks={[rendered('wide')]}
       />,
     );
-    // Full-width block: (510 + 3) / 13 → 39 weeks.
-    expect(container.querySelectorAll('rect[width="10"][height="10"]')).toHaveLength(39 * 7);
+    // Full-width block: (526 + 3) / 13 → 40 weeks.
+    expect(container.querySelectorAll('rect[width="10"][height="10"]')).toHaveLength(40 * 7);
   });
 
   it('hides streaks and the heatmap when turned off', () => {

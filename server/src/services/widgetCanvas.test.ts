@@ -34,8 +34,8 @@ it('renders the shared widget canvas as SVG', () => {
   expect(svg).toContain('widget-surface');
   // No drop shadow: it would tint the transparent corners around the rounded canvas.
   expect(svg).not.toContain('<filter');
-  // Canvas padding 24 + block border 1 + block padding 20.
-  expect(svg).toContain('transform="translate(45 45)"');
+  // Canvas padding 24 + block border 1 + block padding 12.
+  expect(svg).toContain('transform="translate(37 37)"');
 });
 
 it('scales the SVG viewport without changing the widget viewBox', () => {
@@ -96,17 +96,17 @@ it('inlines avatars as data URIs instead of external URLs', () => {
 
 it('renders the new GitHub blocks with the same geometry as the HTML canvas', async () => {
   const { heatmapWeeks } = await import('@shared/widget/geometry.js');
-  const layout = (x: number, y: number, width = 1) => ({ layout: { x, y, width, height: 1 } });
+  const layout = (x: number, y: number, width = 2) => ({ layout: { x, y, width, height: 2 } });
   const svg = renderToStaticMarkup(
     createElement(WidgetCanvas, {
       blocks: [
         { id: 'commits', type: 'github-commits', position: 0, config: layout(0, 0) },
-        { id: 'prs', type: 'github-prs', position: 1, config: layout(1, 0) },
-        { id: 'status', type: 'github-status', position: 2, config: layout(0, 1, 2) },
+        { id: 'prs', type: 'github-prs', position: 1, config: layout(2, 0) },
+        { id: 'status', type: 'github-status', position: 2, config: layout(0, 2, 4) },
       ],
       width: 600,
       height: 600,
-      columns: 2,
+      columns: 4,
       renderedBlocks: [
         {
           id: 'commits',
@@ -137,9 +137,9 @@ it('renders the new GitHub blocks with the same geometry as the HTML canvas', as
     }),
   );
 
-  // A 1-column block (225px content) fits 17 weeks × 7 days of heatmap cells.
-  expect(heatmapWeeks(225)).toBe(17);
-  expect(svg.match(/width="10" height="10" rx="2.5"/g)).toHaveLength(17 * 7);
+  // A 2-column block (244px content) fits 19 weeks × 7 days of heatmap cells.
+  expect(heatmapWeeks(244)).toBe(19);
+  expect(svg.match(/width="10" height="10" rx="2.5"/g)).toHaveLength(19 * 7);
   // "1,200" at 22.5px/800 with -0.06em spacing (~57px) fits the 63px stat column.
   expect(svg).toContain('>1,200<');
   expect(svg).toMatch(/>Merged<\/text>.*?>70%<\/text>/);

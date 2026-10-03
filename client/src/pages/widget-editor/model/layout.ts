@@ -1,4 +1,13 @@
-import { MAX_GRID_COLUMNS, widgetDimensions } from '@shared/widget/geometry';
+import { DEFAULT_BLOCK_SIZE } from '@shared/widget/blockSizes';
+import {
+  MAX_BLOCK_HEIGHT,
+  MAX_GRID_COLUMNS,
+  MAX_GRID_ROWS,
+  findFreeSpot,
+  gridRows,
+  layoutsOverlap,
+  widgetDimensions,
+} from '@shared/widget/geometry';
 import type {
   BlockLayout,
   BlockType,
@@ -8,17 +17,12 @@ import type {
   WidgetBlock,
 } from '@/entities/widget/model';
 
-export const MAX_BLOCKS = 5;
+// Free plan limit (see docs/design/grid-and-blocks.md for planned tiers); mirrors the server.
+export const MAX_BLOCKS = 8;
 export const MAX_COLUMNS = MAX_GRID_COLUMNS;
+export const MAX_ROWS = MAX_GRID_ROWS;
 const MAX_ROW = 100;
-const DEFAULT_LAYOUT: BlockLayout = { x: 0, y: 0, width: 1, height: 1 };
-
-export const blockSizes = [
-  { width: 1, height: 1, label: '1 × 1' },
-  { width: 1, height: 2, label: '1 × 2' },
-  { width: 2, height: 1, label: '2 × 1' },
-  { width: 2, height: 2, label: '2 × 2' },
-] as const;
+const DEFAULT_LAYOUT: BlockLayout = { x: 0, y: 0, ...DEFAULT_BLOCK_SIZE };
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -42,12 +46,20 @@ const layoutFromBlock = (block: WidgetBlock, index: number): BlockLayout => {
   const value: Partial<BlockLayout> =
     input && typeof input === 'object' ? (input as Partial<BlockLayout>) : { y: index };
   const x = clamp(typeof value.x === 'number' ? value.x : 0, 0, MAX_COLUMNS - 1);
-  const width = clamp(typeof value.width === 'number' ? value.width : 1, 1, MAX_COLUMNS - x);
+  const width = clamp(
+    typeof value.width === 'number' ? value.width : DEFAULT_LAYOUT.width,
+    1,
+    MAX_COLUMNS - x,
+  );
   return {
     x,
     y: clamp(typeof value.y === 'number' ? value.y : index, 0, MAX_ROW),
     width,
-    height: clamp(typeof value.height === 'number' ? value.height : 1, 1, 2),
+    height: clamp(
+      typeof value.height === 'number' ? value.height : DEFAULT_LAYOUT.height,
+      1,
+      MAX_BLOCK_HEIGHT,
+    ),
   };
 };
 
@@ -56,12 +68,6 @@ export const getWidgetDimensions = (blocks: WidgetBlock[]) =>
 
 export const layoutsFor = (widget: Widget) =>
   widget.blocks.map((block) => ({ blockId: block.id, layout: getLayout(block) }));
-
-const layoutsOverlap = (left: BlockLayout, right: BlockLayout) =>
-  left.x < right.x + right.width &&
-  left.x + left.width > right.x &&
-  left.y < right.y + right.height &&
-  left.y + left.height > right.y;
 
 // Highest row where the layout fits without overlapping `obstacles`.
 const firstFreeRow = (layout: BlockLayout, obstacles: BlockLayout[]) => {
@@ -84,7 +90,7 @@ export const placeBlock = (widget: Widget, blockId: string, layout: BlockLayout)
     x: clamp(layout.x, 0, MAX_COLUMNS - width),
     y: clamp(layout.y, 0, MAX_ROW),
     width,
-    height: clamp(layout.height, 1, 2),
+    height: clamp(layout.height, 1, MAX_BLOCK_HEIGHT),
   };
   const others = widget.blocks
     .filter((block) => block.id !== blockId)
@@ -148,18 +154,50 @@ export const moveBlock = (widget: Widget, blockId: string, cell: { x: number; y:
   };
 };
 
-/** Rows shown while dragging: occupied rows plus one spare drop row (at least two). */
-export const dragGridRows = (widget: Widget) =>
-  Math.min(
-    MAX_ROW,
-    Math.max(
-      2,
-      ...widget.blocks.map((block) => {
-        const layout = getLayout(block);
-        return layout.y + layout.height + 1;
-      }),
-    ),
+/**
+ * Rows shown while dragging: occupied rows plus one spare drop row, unless that would go past the
+ * row limit (widgets migrated from the old grid can already be taller).
+ */
+export const dragGridRows = (widget: Widget) => {
+  const rows = occupiedRows(widget);
+  return Math.max(2, rows < MAX_ROWS ? rows + 1 : rows);
+};
+
+const rowsOf = (widget: Widget) => gridRows(widget.blocks.map(getLayout));
+
+/** A change may not make a widget taller than the limit (or than it already is, if it's over). */
+export const fitsRowLimit = (before: Widget, after: Widget) =>
+  rowsOf(after) <= Math.max(MAX_ROWS, rowsOf(before));
+
+/**
+ * Re-places every block, top to bottom and keeping its size, at the first free spot within the
+ * row limit. Used to fit widgets migrated from the 2-column grid; null if they can't fit.
+ */
+export const packIntoRows = (widget: Widget): Widget | null => {
+  const placed: { id: string; layout: BlockLayout }[] = [];
+  const ordered = [...widget.blocks].sort(
+    (left, right) =>
+      getLayout(left).y - getLayout(right).y || getLayout(left).x - getLayout(right).x,
   );
+  for (const block of ordered) {
+    const { width, height } = getLayout(block);
+    const spot = findFreeSpot(
+      placed.map((item) => item.layout),
+      { width, height },
+      { columns: MAX_COLUMNS, rows: MAX_ROWS },
+    );
+    if (!spot) return null;
+    placed.push({ id: block.id, layout: spot });
+  }
+  const layouts = new Map(placed.map((item) => [item.id, item.layout]));
+  return {
+    ...widget,
+    blocks: widget.blocks.map((block) => ({
+      ...block,
+      config: { ...block.config, layout: layouts.get(block.id)! },
+    })),
+  };
+};
 
 export const occupiedRows = (widget: Widget) =>
   Math.max(1, ...widget.blocks.map((block) => getLayout(block).y + getLayout(block).height));

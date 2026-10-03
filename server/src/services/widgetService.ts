@@ -2,7 +2,18 @@ import { randomBytes } from 'node:crypto';
 
 import type { Prisma } from '@prisma/client';
 
-import { widgetDimensions as sharedWidgetDimensions } from '@shared/widget/geometry.js';
+import {
+  DEFAULT_BLOCK_SIZE,
+  isAllowedBlockSize,
+  placementSizes,
+} from '@shared/widget/blockSizes.js';
+import {
+  MAX_GRID_ROWS,
+  findFreeSpot,
+  gridRows,
+  layoutsOverlap,
+  widgetDimensions as sharedWidgetDimensions,
+} from '@shared/widget/geometry.js';
 
 import { prisma } from '@server/lib/prisma.js';
 import { AppError } from '@server/lib/errors.js';
@@ -81,7 +92,7 @@ const layoutFromBlock = (block: { position: number; config: unknown }): BlockLay
       : {};
   const layout = value.layout;
   const result = blockLayoutSchema.safeParse(layout);
-  return result.success ? result.data : { x: 0, y: block.position, width: 1, height: 1 };
+  return result.success ? result.data : { x: 0, y: block.position, ...DEFAULT_BLOCK_SIZE };
 };
 
 const widgetDimensions = (blocks: { position: number; config: unknown }[]) =>
@@ -95,16 +106,22 @@ const normalizeBlockConfig = (type: BlockType, config: unknown, layout?: BlockLa
       : (getDefaultBlockConfig(type) as Record<string, unknown>);
   const result = parseBlockConfig(type, {
     ...defaults,
-    layout: layout ?? input.layout ?? { x: 0, y: 0, width: 1, height: 1 },
+    layout: layout ?? input.layout ?? { x: 0, y: 0, ...DEFAULT_BLOCK_SIZE },
   });
   if (!result.success)
     throw new AppError(400, result.error.issues[0]?.message ?? 'Invalid block config');
   return result.data;
 };
 
+/**
+ * Layout rules: block count, sizes the block type supports, grid bounds, no overlaps, and at most
+ * MAX_GRID_ROWS rows. Widgets migrated from the 2-column grid can be taller; they stay editable
+ * as long as a change doesn't make them taller still (`previousBlocks`).
+ */
 const validateLayouts = (
   blocks: { id: string; position: number; type: string; config: unknown }[],
   config: WidgetConfig,
+  previousBlocks: { position: number; config: unknown }[] = blocks,
 ) => {
   if (blocks.length > MAX_WIDGET_BLOCKS) {
     throw new AppError(400, `A widget can contain at most ${MAX_WIDGET_BLOCKS} blocks`);
@@ -112,22 +129,26 @@ const validateLayouts = (
 
   const columns = config.grid.columns;
   const layouts = blocks.map((block) => ({ block, layout: layoutFromBlock(block) }));
-  for (const { layout } of layouts) {
+  for (const { block, layout } of layouts) {
     if (layout.x + layout.width > columns) {
       throw new AppError(400, 'Block layout exceeds the widget grid');
     }
+    if (!isAllowedBlockSize(block.type, layout.width, layout.height)) {
+      throw new AppError(400, `This block can't be ${layout.width}×${layout.height}`);
+    }
+  }
+
+  const rows = gridRows(layouts.map((item) => item.layout));
+  const previousRows = gridRows(previousBlocks.map(layoutFromBlock));
+  if (rows > Math.max(MAX_GRID_ROWS, previousRows)) {
+    throw new AppError(400, `A widget can be at most ${MAX_GRID_ROWS} rows tall`);
   }
 
   for (let index = 0; index < layouts.length; index += 1) {
     for (let otherIndex = index + 1; otherIndex < layouts.length; otherIndex += 1) {
-      const left = layouts[index].layout;
-      const right = layouts[otherIndex].layout;
-      const overlaps =
-        left.x < right.x + right.width &&
-        left.x + left.width > right.x &&
-        left.y < right.y + right.height &&
-        left.y + left.height > right.y;
-      if (overlaps) throw new AppError(400, 'Block layouts cannot overlap');
+      if (layoutsOverlap(layouts[index].layout, layouts[otherIndex].layout)) {
+        throw new AppError(400, 'Block layouts cannot overlap');
+      }
     }
   }
 };
@@ -189,7 +210,12 @@ export class WidgetService {
           ...block.config,
           ...(getSourceForBlock(block.type) === source && username ? { username } : {}),
         },
-        { x: 0, y: position, width: 1, height: 1 },
+        // Default-size blocks, two per row.
+        {
+          x: (position % 2) * DEFAULT_BLOCK_SIZE.width,
+          y: Math.floor(position / 2) * DEFAULT_BLOCK_SIZE.height,
+          ...DEFAULT_BLOCK_SIZE,
+        },
       ),
     }));
     const dimensions = widgetDimensions(blockInputs);
@@ -261,16 +287,12 @@ export class WidgetService {
       throw new AppError(400, `A widget can contain at most ${MAX_WIDGET_BLOCKS} blocks`);
     }
     const position = widget.blocks.reduce((max, block) => Math.max(max, block.position), -1) + 1;
-    const lastRow = widget.blocks.reduce(
-      (max, block) => Math.max(max, layoutFromBlock(block).y + layoutFromBlock(block).height),
-      0,
-    );
-    const normalizedConfig = normalizeBlockConfig(input.type, input.config, {
-      x: 0,
-      y: lastRow,
-      width: 1,
-      height: 1,
-    });
+    const taken = widget.blocks.map(layoutFromBlock);
+    const spot = placementSizes(input.type)
+      .map((size) => findFreeSpot(taken, size, { columns: MAX_GRID_COLUMNS }))
+      .find((candidate) => candidate !== null);
+    if (!spot) throw new AppError(400, 'There is no free space for a new block in this widget');
+    const normalizedConfig = normalizeBlockConfig(input.type, input.config, spot);
     const [created] = await prisma.$transaction([
       prisma.block.create({
         data: { widgetId, type: input.type, position, config: toJson(normalizedConfig) },
@@ -301,7 +323,7 @@ export class WidgetService {
       block.widget.config,
       block.widget.config as Partial<WidgetConfig>,
     );
-    validateLayouts(nextBlocks, widgetConfig);
+    validateLayouts(nextBlocks, widgetConfig, block.widget.blocks);
     return prisma.block.update({ where: { id: blockId }, data: { config: toJson(config) } });
   };
 
@@ -347,7 +369,7 @@ export class WidgetService {
         config: normalizeBlockConfig(block.type as BlockType, block.config, nextLayout),
       };
     });
-    validateLayouts(nextBlocks, config);
+    validateLayouts(nextBlocks, config, widget.blocks);
     await prisma.$transaction([
       ...nextBlocks.map((block) =>
         prisma.block.update({ where: { id: block.id }, data: { config: toJson(block.config) } }),

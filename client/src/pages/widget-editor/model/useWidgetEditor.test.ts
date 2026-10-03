@@ -19,14 +19,14 @@ const serverWidget: Widget = {
   title: 'Widget',
   slug: 'widget',
   width: 600,
-  height: 315,
+  height: 318,
   public: false,
   createdAt: '',
   updatedAt: '',
   config: {
     palette: 'lavender',
     paletteMode: 'light',
-    grid: { columns: 2 },
+    grid: { columns: 4 },
     renderFormat: 'iframe',
   },
   blocks: [
@@ -34,7 +34,7 @@ const serverWidget: Widget = {
       id: 'block-1',
       type: 'text',
       position: 0,
-      config: { text: 'Hello', layout: { x: 0, y: 0, width: 1, height: 1 } },
+      config: { text: 'Hello', layout: { x: 0, y: 0, width: 2, height: 2 } },
     },
   ],
 };
@@ -117,7 +117,7 @@ it('keeps edits made while a save is in flight', async () => {
 
 it('restores unsaved edits from the local cache', async () => {
   localStorage.setItem(
-    'widget-editor:v4:widget-1',
+    'widget-editor:v5:widget-1',
     JSON.stringify({ savedAt: 1, widget: { ...serverWidget, title: 'Unsaved' } }),
   );
 
@@ -130,11 +130,14 @@ it('restores unsaved edits from the local cache', async () => {
 it('refuses to add blocks past the limit', async () => {
   api.getWidget.mockResolvedValue({
     ...serverWidget,
-    blocks: Array.from({ length: 5 }, (_, index) => ({
+    blocks: Array.from({ length: 8 }, (_, index) => ({
       ...serverWidget.blocks[0],
       id: `block-${index}`,
       position: index,
-      config: { text: 'x', layout: { x: 0, y: index, width: 1, height: 1 } },
+      config: {
+        text: 'x',
+        layout: { x: index % 4, y: Math.floor(index / 4), width: 1, height: 1 },
+      },
     })),
   });
   const { result } = await renderEditor();

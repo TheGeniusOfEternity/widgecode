@@ -1,21 +1,27 @@
 import { useRef, useState, type PointerEvent, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 
-import type { Widget } from '@/entities/widget/model';
-import { GRID_GAP } from '@shared/widget/geometry';
+import type { BlockLayout, Widget } from '@/entities/widget/model';
+import { snapToAllowedSize } from '@shared/widget/blockSizes';
+import { GRID_GAP, MAX_BLOCK_HEIGHT } from '@shared/widget/geometry';
 import {
   MAX_COLUMNS,
+  MAX_ROWS,
   clamp,
+  fitsRowLimit,
   getLayout,
   moveBlock,
+  occupiedRows,
   placeBlock,
 } from '@/pages/widget-editor/model/layout';
 
 type Cell = { x: number; y: number };
+export type ResizePreview = { blockId: string; layout: BlockLayout };
 
 /**
- * Pointer drag between grid cells and size presets for editor blocks. Works on a scaled canvas:
- * pointer math converts screen pixels to grid cells using the grid's rendered size.
+ * Pointer drag between grid cells and corner resizing (snapped to the block type's allowed sizes)
+ * for editor blocks. Works on a scaled canvas: pointer math converts screen pixels to grid cells
+ * using the grid area's rendered size. Changes that would exceed the row limit are rejected.
  */
 export const useGridDrag = ({
   widgetRef,
@@ -30,6 +36,24 @@ export const useGridDrag = ({
   const dragRef = useRef<{ blockId: string; pointerId: number; preview: Cell } | null>(null);
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
   const [dropCell, setDropCell] = useState<Cell | null>(null);
+  const resizeRef = useRef<{ blockId: string; pointerId: number; preview: BlockLayout } | null>(
+    null,
+  );
+  const [resizePreview, setResizePreview] = useState<ResizePreview | null>(null);
+  const [isRowLimitHit, setRowLimitHit] = useState(false);
+
+  const rawCellFromPoint = (clientX: number, clientY: number): Cell | null => {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const bounds = grid.getBoundingClientRect();
+    const gap = GRID_GAP * (bounds.width / grid.offsetWidth || 1);
+    const cell = (bounds.width - gap * (MAX_COLUMNS - 1)) / MAX_COLUMNS;
+    if (cell <= 0) return null;
+    return {
+      x: Math.floor((clientX - bounds.left) / (cell + gap)),
+      y: Math.floor((clientY - bounds.top) / (cell + gap)),
+    };
+  };
 
   const cellFromPoint = (clientX: number, clientY: number, width: number): Cell | null => {
     const grid = gridRef.current;
@@ -80,8 +104,9 @@ export const useGridDrag = ({
   // FLIP: every block that moves (the edited one and those pushed aside) animates from its old
   // rect to the new one instead of jumping.
   const animateLayoutChange = (applyChange: () => void) => {
+    // Blocks are siblings of the grid area layer inside the widget surface.
     const elements = Array.from(
-      gridRef.current?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [],
+      gridRef.current?.parentElement?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [],
     );
     const before = new Map(elements.map((element) => [element, element.getBoundingClientRect()]));
     flushSync(applyChange);
@@ -122,24 +147,92 @@ export const useGridDrag = ({
     const layout = block ? getLayout(block) : null;
     endDrag();
     if (!layout || (layout.x === drag.preview.x && layout.y === drag.preview.y)) return;
-    const cell = drag.preview;
-    animateLayoutChange(() => updateLocalWidget((widget) => moveBlock(widget, drag.blockId, cell)));
+    applyIfFits(current, moveBlock(current, drag.blockId, drag.preview));
   };
 
-  const resizeBlock = (blockId: string, width: number, height: number) => {
+  const applyIfFits = (current: Widget, next: Widget) => {
+    if (!fitsRowLimit(current, next)) {
+      setRowLimitHit(true);
+      return;
+    }
+    setRowLimitHit(false);
+    animateLayoutChange(() => updateLocalWidget(() => next));
+  };
+
+  const endResize = () => {
+    resizeRef.current = null;
+    setResizePreview(null);
+  };
+
+  const onResizePointerDown = (event: PointerEvent<HTMLButtonElement>, blockId: string) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
     const block = widgetRef.current?.blocks.find((item) => item.id === blockId);
     if (!block) return;
-    const nextLayout = { ...getLayout(block), width, height };
-    animateLayoutChange(() =>
-      updateLocalWidget((widget) => placeBlock(widget, blockId, nextLayout)),
+    const layout = getLayout(block);
+    resizeRef.current = { blockId, pointerId: event.pointerId, preview: layout };
+    setResizePreview({ blockId, layout });
+    onDragStart(blockId);
+  };
+
+  const onResizePointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const resize = resizeRef.current;
+    const current = widgetRef.current;
+    if (resize?.pointerId !== event.pointerId || !current) return;
+    event.preventDefault();
+    const block = current.blocks.find((item) => item.id === resize.blockId);
+    const cell = rawCellFromPoint(event.clientX, event.clientY);
+    if (!block || !cell) return;
+    const origin = getLayout(block);
+    const rowLimit = Math.max(MAX_ROWS, occupiedRows(current));
+    const maxWidth = MAX_COLUMNS - origin.x;
+    const maxHeight = Math.min(MAX_BLOCK_HEIGHT, rowLimit - origin.y);
+    const size = snapToAllowedSize(
+      block.type,
+      clamp(cell.x - origin.x + 1, 1, maxWidth),
+      clamp(cell.y - origin.y + 1, 1, maxHeight),
+      { maxWidth, maxHeight },
     );
+    // A size wider than the space to the right shifts the block left (as placeBlock would).
+    const preview = { x: Math.min(origin.x, MAX_COLUMNS - size.width), y: origin.y, ...size };
+    resize.preview = preview;
+    setResizePreview({ blockId: resize.blockId, layout: preview });
+  };
+
+  const onResizePointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    const resize = resizeRef.current;
+    const current = widgetRef.current;
+    if (!resize || resize.pointerId !== event.pointerId || !current) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    endResize();
+    const block = current.blocks.find((item) => item.id === resize.blockId);
+    if (!block) return;
+    const layout = getLayout(block);
+    const { preview } = resize;
+    if (
+      layout.width === preview.width &&
+      layout.height === preview.height &&
+      layout.x === preview.x
+    ) {
+      return;
+    }
+    applyIfFits(current, placeBlock(current, resize.blockId, preview));
   };
 
   return {
     gridRef,
     draggingBlockId,
     dropCell,
+    resizePreview,
+    isRowLimitHit,
     pointerHandlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: endDrag },
-    resizeBlock,
+    resizeHandlers: {
+      onPointerDown: onResizePointerDown,
+      onPointerMove: onResizePointerMove,
+      onPointerUp: onResizePointerUp,
+      onPointerCancel: endResize,
+    },
   };
 };

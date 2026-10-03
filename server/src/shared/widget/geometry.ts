@@ -2,14 +2,18 @@
 // the SVG export and the stored widget size all derive their numbers from here.
 
 export const WIDGET_WIDTH = 600;
+// Height cap for rendering; editing is limited to MAX_GRID_ROWS, but widgets migrated from the
+// 2-column grid may be taller and must still render.
 export const MAX_WIDGET_HEIGHT = 1200;
-export const MAX_GRID_COLUMNS = 2;
-export const MAX_BLOCK_HEIGHT = 2;
-export const GRID_GAP = 18;
-export const BLOCK_PADDING = 20;
+export const MAX_GRID_COLUMNS = 4;
+export const MAX_GRID_ROWS = 5;
+export const MAX_BLOCK_WIDTH = MAX_GRID_COLUMNS;
+export const MAX_BLOCK_HEIGHT = 4;
+export const GRID_GAP = 12;
+export const BLOCK_PADDING = 12;
 export const BLOCK_BORDER = 1;
 export const CANVAS_RADIUS = 28;
-export const BLOCK_RADIUS = 20;
+export const BLOCK_RADIUS = 16;
 export const BLOCK_LINE_HEIGHT = 1.25;
 export const TEXT_BLOCK_LINE_HEIGHT = 1.12;
 
@@ -141,4 +145,25 @@ export const estimateTextWidth = (
   let width = 0;
   for (const character of text) width += glyphWidth(character) * boldness + letterSpacing;
   return width * size;
+};
+
+export const layoutsOverlap = (left: GridLayout, right: GridLayout) =>
+  left.x < right.x + right.width &&
+  left.x + left.width > right.x &&
+  left.y < right.y + right.height &&
+  left.y + left.height > right.y;
+
+/** Top-most, then left-most free spot for a block of `size` within the editable rows. */
+export const findFreeSpot = (
+  layouts: GridLayout[],
+  size: { width: number; height: number },
+  { columns = MAX_GRID_COLUMNS, rows = MAX_GRID_ROWS } = {},
+): GridLayout | null => {
+  for (let y = 0; y + size.height <= rows; y += 1) {
+    for (let x = 0; x + size.width <= columns; x += 1) {
+      const candidate = { x, y, ...size };
+      if (!layouts.some((layout) => layoutsOverlap(layout, candidate))) return candidate;
+    }
+  }
+  return null;
 };
