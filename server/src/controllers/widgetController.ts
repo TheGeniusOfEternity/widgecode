@@ -15,6 +15,7 @@ import {
   presetDefinitions,
   widgetConfigSchema,
   MAX_GRID_COLUMNS,
+  MAX_WIDGET_BLOCKS,
 } from '@server/widgets/registry.js';
 
 const widgetIdSchema = z.string().trim().min(1).max(100);
@@ -80,7 +81,9 @@ const previewBlockSchema = z.object({
 const updateBlockSchema = z.object({ config: z.unknown().optional() });
 
 const layoutUpdateSchema = z.object({
-  layouts: z.array(z.object({ blockId: widgetIdSchema, layout: blockLayoutSchema })).max(5),
+  layouts: z
+    .array(z.object({ blockId: widgetIdSchema, layout: blockLayoutSchema }))
+    .max(MAX_WIDGET_BLOCKS),
   columns: z.number().int().min(1).max(MAX_GRID_COLUMNS).optional(),
 });
 

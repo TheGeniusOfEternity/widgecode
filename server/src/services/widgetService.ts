@@ -2,7 +2,11 @@ import { randomBytes } from 'node:crypto';
 
 import type { Prisma } from '@prisma/client';
 
-import { DEFAULT_BLOCK_SIZE, isAllowedBlockSize } from '@shared/widget/blockSizes.js';
+import {
+  DEFAULT_BLOCK_SIZE,
+  isAllowedBlockSize,
+  placementSizes,
+} from '@shared/widget/blockSizes.js';
 import {
   MAX_GRID_ROWS,
   findFreeSpot,
@@ -283,9 +287,10 @@ export class WidgetService {
       throw new AppError(400, `A widget can contain at most ${MAX_WIDGET_BLOCKS} blocks`);
     }
     const position = widget.blocks.reduce((max, block) => Math.max(max, block.position), -1) + 1;
-    const spot = findFreeSpot(widget.blocks.map(layoutFromBlock), DEFAULT_BLOCK_SIZE, {
-      columns: MAX_GRID_COLUMNS,
-    });
+    const taken = widget.blocks.map(layoutFromBlock);
+    const spot = placementSizes(input.type)
+      .map((size) => findFreeSpot(taken, size, { columns: MAX_GRID_COLUMNS }))
+      .find((candidate) => candidate !== null);
     if (!spot) throw new AppError(400, 'There is no free space for a new block in this widget');
     const normalizedConfig = normalizeBlockConfig(input.type, input.config, spot);
     const [created] = await prisma.$transaction([

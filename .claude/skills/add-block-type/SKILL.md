@@ -25,13 +25,23 @@ the `/image.svg` export use the same SVG components.
 - Branch on the new type in `getBlockData`. Throw `AppError` for "not found"; `renderWidgetStats` turns errors into `block.error`.
 - Mind the budget: public SVG/iframe views call this per request (15 min cache per instance). Prefer one API call per block.
 
-## 3. Rendering — `server/src/shared/widget/BlockContent.tsx` (used everywhere)
+## 3. Sizes and rendering — `server/src/shared/widget/` (used everywhere)
 
-- Add a block renderer in `BlockContent` next to the existing ones. Use the `frame` (content width/height + `blockTypography`), `baseline()`, `fitText`, `StatsRow`/`TitleRow` helpers — no hard-coded font sizes.
-- Primitives live in `svgPrimitives.tsx`; the block shell and canvas pieces in `canvasParts.tsx`.
-- Put new labels in `server/src/shared/widget/theme.ts` (`widgetLabels`, ru + en).
-- Loading (`BlockSkeleton`), `error` and missing-username states are handled before the type switch; make sure the new block doesn't bypass them.
-- Images: the export needs data URIs (see `buildAvatarDataUris` in `widgetController.ts`) because external `href`s don't load when the SVG is used as `<img>` on GitHub; in the browser the URL is used directly.
+- `blockSizes.ts`: add the type to `BLOCK_SIZES` (always include the legacy sizes 2×2, 2×4, 4×2,
+  4×4 plus the compact sizes you design for) and, if not 2×2, to `DEFAULT_SIZES`.
+- Create `blocks/<name>.tsx` exporting a `BlockRenderer` that switches on `context.variant`
+  (`tiny` 1×1, `strip` 2–3×1, `wide` 4×1, `card`, `large`); register it in `blocks/index.ts`.
+  Unhandled variants should fall back to `card`.
+- Reuse `blocks/parts.tsx` (`BigStat`, `SegmentBar`, `Avatar`, `fitFontSize`, `wrapText`) and
+  `svgPrimitives.tsx` (`TitleRow`, `StatsRow`, `fitText`, `baseline`). Size text from the frame
+  (`context.t`, `frame.width/height`), never hard-code positions for a single size.
+- Loading, `error` and missing-username states are handled in `BlockContent.tsx` before your
+  renderer runs.
+- Put new labels in `theme.ts` (`widgetLabels`, ru + en).
+- Images: the export needs data URIs (see `buildAvatarDataUris` in `widgetController.ts`) because
+  external `href`s don't load when the SVG is used as `<img>` on GitHub; the browser uses URLs.
+- Add sample data and an expected string for the type in `blockVariants.test.tsx`; it renders every
+  allowed size.
 
 ## 4. Client — `client/src/entities/widget/`
 

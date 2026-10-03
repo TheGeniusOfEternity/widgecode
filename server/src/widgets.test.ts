@@ -133,7 +133,8 @@ it('places a new block at the first free spot with the default size', async () =
   expect(prismaMocks.block.create).toHaveBeenCalledWith(
     expect.objectContaining({
       data: expect.objectContaining({
-        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 2, height: 2 } }),
+        // Text blocks default to 2×1.
+        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 2, height: 1 } }),
       }),
     }),
   );
@@ -314,7 +315,7 @@ it('inlines the GitHub avatar as a data URI in the public SVG image', async () =
         widgetId: widget.id,
         position: 0,
         type: 'github-stats',
-        config: { layout: { x: 0, y: 0, width: 1, height: 1 } },
+        config: { layout: { x: 0, y: 0, width: 2, height: 2 } },
       },
     ],
   };
@@ -454,4 +455,65 @@ describe('grid layout rules', () => {
     ]);
     expect(taller.status).toBe(400);
   });
+});
+
+it('places a new block in a smaller size when the default does not fit', async () => {
+  const { agent, token } = await authenticatedAgent();
+  // Four 2×2 blocks fill rows 0–3; only the single 5th row is left.
+  prismaMocks.widget.findFirst.mockResolvedValue({
+    ...widget,
+    config: { grid: { columns: 4 }, palette: 'lavender', renderFormat: 'iframe' },
+    blocks: [0, 1, 2, 3].map((index) => ({
+      id: `block-${index}`,
+      position: index,
+      type: 'text',
+      config: {
+        text: 'x',
+        layout: { x: (index % 2) * 2, y: Math.floor(index / 2) * 2, width: 2, height: 2 },
+      },
+    })),
+  });
+  prismaMocks.block.create.mockImplementation(async ({ data }: { data: unknown }) => ({
+    id: 'new',
+    ...(data as object),
+  }));
+
+  await agent
+    .post(`/api/widgets/${widget.id}/blocks`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ type: 'github-stats', config: {} })
+    .expect(201);
+
+  expect(prismaMocks.block.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        config: expect.objectContaining({ layout: { x: 0, y: 4, width: 4, height: 1 } }),
+      }),
+    }),
+  );
+});
+
+it('saves layouts for up to 8 blocks', async () => {
+  const { agent, token } = await authenticatedAgent();
+  const blocks = Array.from({ length: 8 }, (_, index) => ({
+    id: `block-${index}`,
+    widgetId: widget.id,
+    position: index,
+    type: 'text',
+    config: { text: 'x', layout: { x: index % 4, y: Math.floor(index / 4), width: 1, height: 1 } },
+  }));
+  prismaMocks.widget.findFirst.mockResolvedValue({
+    ...widget,
+    config: { grid: { columns: 4 }, palette: 'lavender', renderFormat: 'iframe' },
+    blocks,
+  });
+
+  await agent
+    .put(`/api/widgets/${widget.id}/blocks`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      columns: 4,
+      layouts: blocks.map((block) => ({ blockId: block.id, layout: block.config.layout })),
+    })
+    .expect(200);
 });
