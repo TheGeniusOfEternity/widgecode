@@ -57,6 +57,7 @@ All notable changes to this project are documented here.
 
 ### Security
 
+- Removed the `tsc-alias` build dependency (its `chokidar`/`globby` chain pulled in `braces`, which has an unpatched high-severity advisory, GHSA-vfj7-8cjw-p6xm); server path aliases are now resolved by a small `server/scripts/resolve-aliases.mjs`. Updated `brace-expansion` and `ip-address` for newly published advisories.
 - Rate limits now key on the real client IP behind the Vercel proxy instead of one shared proxy IP.
 - Split auth rate limits: login, registration and OAuth stay strict; session refresh, `/me` and logout get a separate, higher limit.
 - Yandex sign-in no longer links to an existing email/password account with the same email (which allowed pre-registered account takeover); such users get a clear message to sign in with their password.
