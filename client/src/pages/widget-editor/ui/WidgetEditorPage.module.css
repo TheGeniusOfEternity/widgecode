@@ -259,7 +259,7 @@
 .sortableBlock {
   position: absolute;
   z-index: 2;
-  border-radius: 20px;
+  border-radius: 16px;
   cursor: pointer;
   transition: box-shadow 160ms ease;
 }
@@ -273,45 +273,20 @@
 .dropCell {
   position: absolute;
   border: 1px dashed color-mix(in srgb, var(--widget-accent) 25%, transparent);
-  border-radius: 20px;
+  border-radius: 16px;
   background: color-mix(in srgb, var(--widget-accent) 5%, transparent);
+}
+.resizePreview {
+  position: absolute;
+  z-index: 3;
+  border: 2px solid var(--widget-accent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--widget-accent) 10%, transparent);
+  pointer-events: none;
 }
 .dropCellActive {
   border-color: var(--widget-accent);
   background: color-mix(in srgb, var(--widget-accent) 18%, transparent);
-}
-.sizeControls {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 4;
-  display: flex;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--widget-surface) 88%, transparent);
-  opacity: 0;
-  transition: opacity 150ms ease;
-}
-.sizeButton,
-.sizeButtonActive {
-  padding: 3px 5px;
-  color: var(--muted);
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 9px;
-  line-height: 1;
-}
-.sizeButtonActive {
-  color: var(--widget-ink);
-  background: color-mix(in srgb, var(--widget-accent) 20%, transparent);
-}
-.sortableBlock:hover .sizeControls,
-.sortableBlock:focus-within .sizeControls {
-  opacity: 1;
 }
 .draggingBlock {
   opacity: 0.45;
@@ -373,6 +348,19 @@
 .sortableBlock:focus-within .removeBlock,
 .sortableBlock:focus-within .resizeHandle {
   opacity: 1;
+}
+.gridNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 8px 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--action) 10%, transparent);
+  font-size: 13px;
+  line-height: 1.4;
 }
 .inlineError {
   margin: 0;

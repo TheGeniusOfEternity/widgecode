@@ -5,7 +5,9 @@
   align-items: center;
   position: relative;
   min-height: 100vh;
-  overflow-x: hidden;
+  /* clip, not hidden: a hidden overflow is still programmatically scrollable, so focus or
+     scrollIntoView could shift the page sideways by the decorative orbs' overflow. */
+  overflow-x: clip;
   padding: 24px;
   background:
     radial-gradient(

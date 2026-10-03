@@ -4,6 +4,7 @@ import { ScaledWidgetFrame, WidgetSurface } from '@/entities/widget';
 import { paletteTokens, type RenderedBlock, type Widget } from '@/entities/widget/model';
 import { WIDGET_WIDTH, blockBox, canvasPadding, widgetDimensions } from '@shared/widget/geometry';
 import { MAX_COLUMNS, dragGridRows, occupiedRows } from '@/pages/widget-editor/model/layout';
+import type { ResizePreview } from '@/pages/widget-editor/model/useGridDrag';
 import { EditorBlock, type BlockPointerHandlers } from '@/pages/widget-editor/ui/EditorBlock';
 import { messages, type Locale } from '@/shared/locale/content';
 import styles from '@/pages/widget-editor/ui/WidgetEditorPage.module.css';
@@ -17,9 +18,10 @@ type EditorCanvasProps = {
   draggingBlockId: string | null;
   dropCell: { x: number; y: number } | null;
   pointerHandlers: BlockPointerHandlers;
+  resizeHandlers: BlockPointerHandlers;
+  resizePreview: ResizePreview | null;
   onSelectBlock: (blockId: string) => void;
   onRemoveBlock: (blockId: string) => void;
-  onResizeBlock: (blockId: string, width: number, height: number) => void;
 };
 
 const padding = canvasPadding(WIDGET_WIDTH);
@@ -34,23 +36,29 @@ export const EditorCanvas = ({
   draggingBlockId,
   dropCell,
   pointerHandlers,
+  resizeHandlers,
+  resizePreview,
   onSelectBlock,
   onRemoveBlock,
-  onResizeBlock,
 }: EditorCanvasProps) => {
   const t = messages[locale];
   // While dragging, the grid shows one spare row below the blocks as a drop target.
   const dropRows = dragGridRows(widget);
-  const displayRows = draggingBlockId ? dropRows : occupiedRows(widget);
+  // While resizing, the canvas grows to show the previewed size.
+  const displayRows = draggingBlockId
+    ? dropRows
+    : Math.max(
+        occupiedRows(widget),
+        resizePreview ? resizePreview.layout.y + resizePreview.layout.height : 0,
+      );
   const canvasHeight =
     widget.blocks.length === 0
       ? widget.height
       : widgetDimensions([{ x: 0, y: displayRows - 1, width: 1, height: 1 }]).height;
-  const cell = (x: number, y: number) =>
-    blockBox(
-      { x, y, width: 1, height: 1 },
-      { width: WIDGET_WIDTH, height: canvasHeight, rows: displayRows },
-    );
+  const boxOf = (layout: { x: number; y: number; width: number; height: number }) =>
+    blockBox(layout, { width: WIDGET_WIDTH, height: canvasHeight, rows: displayRows });
+  const cell = (x: number, y: number) => boxOf({ x, y, width: 1, height: 1 });
+  const previewBox = resizePreview ? boxOf(resizePreview.layout) : null;
 
   return (
     <ScaledWidgetFrame
@@ -81,9 +89,10 @@ export const EditorCanvas = ({
             dragging={draggingBlockId === block.id}
             removeLabel={t.removeBlock}
             pointerHandlers={pointerHandlers}
+            resizeHandlers={resizeHandlers}
+            resizeLabel={t.resizeBlock}
             onSelect={() => onSelectBlock(block.id)}
             onRemove={() => onRemoveBlock(block.id)}
-            onResize={(width, height) => onResizeBlock(block.id, width, height)}
           >
             {content}
           </EditorBlock>
@@ -119,6 +128,17 @@ export const EditorCanvas = ({
                 />
               );
             })}
+          {previewBox && (
+            <div
+              className={styles.resizePreview}
+              style={{
+                left: previewBox.x - padding,
+                top: previewBox.y - padding,
+                width: previewBox.width,
+                height: previewBox.height,
+              }}
+            />
+          )}
         </div>
       </WidgetSurface>
     </ScaledWidgetFrame>

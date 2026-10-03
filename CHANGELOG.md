@@ -17,6 +17,9 @@ All notable changes to this project are documented here.
 
 ### Changed
 
+- The widget grid is now 4 columns × up to 5 rows of half-size cells (a 600×600 widget fits 16 cells instead of 4). Existing widgets were converted automatically and look the same; ones that end up taller than 5 rows can be fitted from the editor.
+- Blocks are resized by dragging their corner, snapping to the sizes each block supports; the size buttons are gone.
+- A widget can hold up to 8 blocks (was 5).
 - The editor, public page and iframe now render widgets with the same SVG components as the image export (one renderer instead of an HTML and an SVG copy), so every surface shows exactly the same widget.
 - SVG text truncation and stat number formatting now use a per-character width estimate calibrated to the widget font (Cyrillic, bold and `%` are wider), so the SVG export cuts text in the same places as the HTML widget.
 - Split the 1,200-line widget editor into layout rules, state/autosave, drag and preview hooks, and focused UI components, and shared the embed snippet builder between the gallery and the editor.
@@ -29,6 +32,8 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- The page could shift sideways when the browser scrolled an element into view (decorative background overflow).
+- Restored the move animation for blocks pushed aside while dragging or resizing in the editor.
 - Starting Yandex sign-in when it isn't configured now returns to the app with an error message instead of a raw JSON response.
 - Fixed editor blocks jumping to another column or far down the grid when resized: the edited block stays in place, neighbours move down and gaps close; dropping a block onto one of the same size swaps them, and every moved block animates.
 - Fixed saving failing with a raw validation error after clearing a text block or entering an out-of-range language count; the count is now a 3–8 select and text/username fields have length limits.

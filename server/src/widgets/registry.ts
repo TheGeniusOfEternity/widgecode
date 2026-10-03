@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { DEFAULT_BLOCK_SIZE } from '@shared/widget/blockSizes.js';
 import { MAX_BLOCK_HEIGHT, MAX_GRID_COLUMNS } from '@shared/widget/geometry.js';
 
 export const BLOCK_TYPES = [
@@ -21,7 +22,9 @@ export type PaletteId = (typeof PALETTE_IDS)[number];
 export const PALETTE_MODES = ['light', 'dark'] as const;
 export type PaletteMode = (typeof PALETTE_MODES)[number];
 
-export const MAX_WIDGET_BLOCKS = 5;
+// Free plan limit. Planned tiers (not implemented): paid 16, special accounts 20 — see
+// docs/design/grid-and-blocks.md.
+export const MAX_WIDGET_BLOCKS = 8;
 export { MAX_GRID_COLUMNS };
 
 export const blockTypeSchema = z.enum(BLOCK_TYPES);
@@ -49,7 +52,7 @@ export type BlockLayout = z.infer<typeof blockLayoutSchema>;
 const usernameSchema = z.string().trim().max(100).optional();
 
 const sharedBlockFields = {
-  layout: blockLayoutSchema.default({ x: 0, y: 0, width: 1, height: 1 }),
+  layout: blockLayoutSchema.default({ x: 0, y: 0, ...DEFAULT_BLOCK_SIZE }),
 };
 
 const blockSchemas: Record<BlockType, z.ZodType> = {

@@ -94,25 +94,26 @@ it('creates a widget with preset blocks and a generated slug', async () => {
     };
   };
   expect(createCall.data.width).toBe(600);
-  expect(createCall.data.height).toBe(600);
+  // Two default 2×2 blocks side by side: 2 rows.
+  expect(createCall.data.height).toBe(318);
   expect(createCall.data.blocks.create).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 1, height: 1 } }),
+        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 2, height: 2 } }),
       }),
       expect.objectContaining({
-        config: expect.objectContaining({ layout: { x: 0, y: 1, width: 1, height: 1 } }),
+        config: expect.objectContaining({ layout: { x: 2, y: 0, width: 2, height: 2 } }),
       }),
     ]),
   );
 });
 
-it('creates a new block as a single-column item', async () => {
+it('places a new block at the first free spot with the default size', async () => {
   const { agent, token } = await authenticatedAgent();
   prismaMocks.widget.findFirst.mockResolvedValue({
     id: widget.id,
     userId: user.id,
-    config: { grid: { columns: 2 }, palette: 'lavender', renderFormat: 'iframe' },
+    config: { grid: { columns: 4 }, palette: 'lavender', renderFormat: 'iframe' },
     blocks: [],
   });
   prismaMocks.block.create.mockResolvedValue({
@@ -120,7 +121,7 @@ it('creates a new block as a single-column item', async () => {
     widgetId: widget.id,
     position: 0,
     type: 'text',
-    config: { text: 'New block', layout: { x: 0, y: 0, width: 1, height: 1 } },
+    config: { text: 'New block', layout: { x: 0, y: 0, width: 2, height: 2 } },
   });
 
   await agent
@@ -132,7 +133,7 @@ it('creates a new block as a single-column item', async () => {
   expect(prismaMocks.block.create).toHaveBeenCalledWith(
     expect.objectContaining({
       data: expect.objectContaining({
-        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 1, height: 1 } }),
+        config: expect.objectContaining({ layout: { x: 0, y: 0, width: 2, height: 2 } }),
       }),
     }),
   );
@@ -223,17 +224,17 @@ it('deletes a widget through the protected route', async () => {
   expect(prismaMocks.widget.delete).toHaveBeenCalledWith({ where: { id: widget.id } });
 });
 
-it('rejects adding a sixth block', async () => {
+it('rejects adding a ninth block', async () => {
   const { agent, token } = await authenticatedAgent();
   prismaMocks.widget.findFirst.mockResolvedValue({
     id: widget.id,
     userId: user.id,
-    config: { grid: { columns: 1 }, palette: 'lavender', renderFormat: 'iframe' },
-    blocks: Array.from({ length: 5 }, (_, index) => ({
+    config: { grid: { columns: 4 }, palette: 'lavender', renderFormat: 'iframe' },
+    blocks: Array.from({ length: 8 }, (_, index) => ({
       id: `block-${index}`,
       position: index,
       type: 'text',
-      config: { text: `Block ${index}`, layout: { x: 0, y: index, width: 1, height: 1 } },
+      config: { text: `Block ${index}`, layout: { x: 0, y: index, width: 2, height: 2 } },
     })),
   });
 
@@ -241,7 +242,7 @@ it('rejects adding a sixth block', async () => {
     .post(`/api/widgets/${widget.id}/blocks`)
     .set('Authorization', `Bearer ${token}`)
     .send({ type: 'text', config: { text: 'Too many' } })
-    .expect(400, { error: 'A widget can contain at most 5 blocks' });
+    .expect(400, { error: 'A widget can contain at most 8 blocks' });
 });
 
 it('renders a public widget as an SVG image', async () => {
@@ -389,4 +390,68 @@ it('allows far more SVG image requests per IP than JSON widget requests', async 
   } finally {
     delete process.env.VERCEL;
   }
+});
+
+describe('grid layout rules', () => {
+  const blockAt = (id: string, layout: Record<string, number>) => ({
+    id,
+    widgetId: widget.id,
+    position: 0,
+    type: 'text',
+    config: { text: id, layout },
+  });
+  const widgetWith = (blocks: ReturnType<typeof blockAt>[]) => ({
+    ...widget,
+    config: { grid: { columns: 4 }, palette: 'lavender', renderFormat: 'iframe' },
+    blocks,
+  });
+  const reorder = async (layouts: { blockId: string; layout: Record<string, number> }[]) => {
+    const { agent, token } = await authenticatedAgent();
+    return agent
+      .put(`/api/widgets/${widget.id}/blocks`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ columns: 4, layouts });
+  };
+
+  it('rejects sizes the block type does not support', async () => {
+    prismaMocks.widget.findFirst.mockResolvedValue(
+      widgetWith([blockAt('a', { x: 0, y: 0, width: 2, height: 2 })]),
+    );
+
+    const response = await reorder([{ blockId: 'a', layout: { x: 0, y: 0, width: 3, height: 3 } }]);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("This block can't be 3×3");
+  });
+
+  it('rejects layouts taller than 5 rows', async () => {
+    prismaMocks.widget.findFirst.mockResolvedValue(
+      widgetWith([blockAt('a', { x: 0, y: 0, width: 2, height: 2 })]),
+    );
+
+    const response = await reorder([{ blockId: 'a', layout: { x: 0, y: 4, width: 2, height: 2 } }]);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('A widget can be at most 5 rows tall');
+  });
+
+  it('keeps migrated widgets that are already taller editable, but not taller still', async () => {
+    const tall = widgetWith([
+      blockAt('a', { x: 0, y: 0, width: 2, height: 2 }),
+      blockAt('b', { x: 0, y: 4, width: 2, height: 2 }),
+    ]);
+    prismaMocks.widget.findFirst.mockResolvedValue(tall);
+
+    const same = await reorder([
+      { blockId: 'a', layout: { x: 2, y: 0, width: 2, height: 2 } },
+      { blockId: 'b', layout: { x: 0, y: 4, width: 2, height: 2 } },
+    ]);
+    expect(same.status).toBe(200);
+
+    const taller = await reorder([
+      { blockId: 'a', layout: { x: 0, y: 0, width: 2, height: 2 } },
+      { blockId: 'b', layout: { x: 0, y: 6, width: 2, height: 2 } },
+    ]);
+    expect(taller.status).toBe(400);
+  });
 });

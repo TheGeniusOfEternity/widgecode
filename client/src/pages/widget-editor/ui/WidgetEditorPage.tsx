@@ -6,6 +6,7 @@ import type { Widget } from '@/entities/widget/model';
 import { useBlockPreviews } from '@/pages/widget-editor/model/useBlockPreviews';
 import { useGridDrag } from '@/pages/widget-editor/model/useGridDrag';
 import { useWidgetEditor } from '@/pages/widget-editor/model/useWidgetEditor';
+import { MAX_ROWS, occupiedRows, packIntoRows } from '@/pages/widget-editor/model/layout';
 import { BlockConfigPanel } from '@/pages/widget-editor/ui/BlockConfigPanel';
 import { BlockLibrary } from '@/pages/widget-editor/ui/BlockLibrary';
 import { EditorCanvas } from '@/pages/widget-editor/ui/EditorCanvas';
@@ -59,6 +60,15 @@ export const WidgetEditorPage = ({
     onDragStart: editor.selectBlock,
   });
   const { widget, selectedBlock } = editor;
+
+  const [fitFailed, setFitFailed] = useState(false);
+  // Widgets migrated from the 2-column grid can be taller than the row limit.
+  const fitWidget = () => {
+    const current = editor.widgetRef.current;
+    const packed = current ? packIntoRows(current) : null;
+    setFitFailed(!packed);
+    if (packed) editor.updateLocalWidget(() => packed);
+  };
 
   const leave = async () => {
     if (editor.isDirtyRef.current) await editor.save();
@@ -125,10 +135,24 @@ export const WidgetEditorPage = ({
             draggingBlockId={drag.draggingBlockId}
             dropCell={drag.dropCell}
             pointerHandlers={drag.pointerHandlers}
+            resizeHandlers={drag.resizeHandlers}
+            resizePreview={drag.resizePreview}
             onSelectBlock={editor.selectBlock}
             onRemoveBlock={(blockId) => void editor.removeBlock(blockId)}
-            onResizeBlock={drag.resizeBlock}
           />
+          {occupiedRows(widget) > MAX_ROWS && (
+            <div className={styles.gridNotice} role="status">
+              <span>{fitFailed ? t.fitWidgetFailed : t.tallWidget}</span>
+              <Button view="outlined-action" size="s" onClick={fitWidget}>
+                {t.fitWidget}
+              </Button>
+            </div>
+          )}
+          {drag.isRowLimitHit && (
+            <p className={styles.inlineError} role="alert">
+              {t.gridRowLimit}
+            </p>
+          )}
           {editor.error && (
             <p className={styles.inlineError} role="alert">
               {editor.error}

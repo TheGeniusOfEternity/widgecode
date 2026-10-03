@@ -3,7 +3,8 @@ import type { Widget } from '@/entities/widget/model';
 // Unsaved editor state survives reloads and crashes until the next successful save.
 type CachedEditorState = { savedAt: number; widget: Widget };
 
-const cacheKey = (widgetId: string) => `widget-editor:v4:${widgetId}`;
+// v5: layouts use the 4-column grid; older drafts hold 2-column layouts and are ignored.
+const cacheKey = (widgetId: string) => `widget-editor:v5:${widgetId}`;
 
 export const readCachedWidget = (widgetId: string): Widget | null => {
   try {
