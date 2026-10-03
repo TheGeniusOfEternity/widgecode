@@ -1,12 +1,10 @@
 import { Grip, TrashBin } from '@gravity-ui/icons';
 import { Icon } from '@gravity-ui/uikit';
-import type { PointerEvent } from 'react';
+import type { PointerEvent, ReactNode } from 'react';
 
-import { blockStyleVars, WidgetBlockContent } from '@/entities/widget';
-import type { RenderedBlock, WidgetBlock } from '@/entities/widget/model';
-import canvasStyles from '@/entities/widget/ui/WidgetCanvas.module.css';
+import type { WidgetBlock } from '@/entities/widget/model';
+import type { BlockBox } from '@shared/widget/canvasParts';
 import { blockSizes, getLayout } from '@/pages/widget-editor/model/layout';
-import type { Locale } from '@/shared/locale/content';
 import styles from '@/pages/widget-editor/ui/WidgetEditorPage.module.css';
 
 export type BlockPointerHandlers = {
@@ -18,8 +16,10 @@ export type BlockPointerHandlers = {
 
 type EditorBlockProps = {
   block: WidgetBlock;
-  rendered?: RenderedBlock;
-  locale: Locale;
+  /** Position inside the canvas, in widget pixels. */
+  box: BlockBox;
+  /** The block's SVG, rendered by WidgetSurface. */
+  children: ReactNode;
   selected: boolean;
   dragging: boolean;
   removeLabel: string;
@@ -31,8 +31,8 @@ type EditorBlockProps = {
 
 export const EditorBlock = ({
   block,
-  rendered,
-  locale,
+  box,
+  children,
   selected,
   dragging,
   removeLabel,
@@ -44,9 +44,9 @@ export const EditorBlock = ({
   const layout = getLayout(block);
   return (
     <article
-      className={`${canvasStyles.block} ${styles.sortableBlock} ${selected ? canvasStyles.selected : ''} ${dragging ? styles.draggingBlock : ''}`}
+      className={`${styles.sortableBlock} ${selected ? styles.selectedBlock : ''} ${dragging ? styles.draggingBlock : ''}`}
       data-block-id={block.id}
-      style={blockStyleVars(layout)}
+      style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
       onClick={onSelect}
     >
       <button
@@ -77,7 +77,7 @@ export const EditorBlock = ({
           </button>
         ))}
       </div>
-      <WidgetBlockContent block={block} rendered={rendered} locale={locale} />
+      {children}
       <button
         className={styles.removeBlock}
         type="button"

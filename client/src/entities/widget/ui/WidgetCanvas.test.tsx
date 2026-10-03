@@ -34,7 +34,8 @@ it('renders live stats with localized labels and fits long numbers', () => {
   );
 
   expect(screen.getByText('The Octocat')).toBeInTheDocument();
-  expect(screen.getByText('Подписчики')).toBeInTheDocument();
+  // Labels are cut to the stat column like in the SVG export.
+  expect(screen.getAllByText(/^Подпис/)).toHaveLength(2);
   // A 1-column block is too narrow for "24,351" at stat size, so it switches to compact.
   expect(screen.getByText('24.4K')).toBeInTheDocument();
 });
@@ -49,11 +50,13 @@ it('renders at the stored widget size with the palette mode applied', () => {
       height={315}
     />,
   );
-  const canvas = container.firstElementChild as HTMLElement;
+  const surface = container.firstElementChild as HTMLElement;
 
-  expect(canvas).toHaveAttribute('data-palette-mode', 'dark');
-  expect(canvas.style.getPropertyValue('--widget-width')).toBe('600px');
-  expect(canvas.style.getPropertyValue('--widget-height')).toBe('315px');
+  expect(surface.style.width).toBe('600px');
+  expect(surface.style.height).toBe('315px');
+  // Mint, dark mode.
+  expect(surface.style.getPropertyValue('--widget-accent')).toBe('#73d9b8');
+  expect(container.querySelector('svg')).toHaveAttribute('viewBox', '0 0 600 315');
 });
 
 it('asks for a username before a data block can load', () => {
@@ -65,7 +68,7 @@ it('asks for a username before a data block can load', () => {
     />,
   );
 
-  expect(screen.getByRole('status')).toHaveTextContent('Add a GitHub username in block settings');
+  expect(screen.getByText('Add a username')).toBeInTheDocument();
 });
 
 it('shows block errors instead of data', () => {
@@ -108,7 +111,7 @@ describe('GitHub activity, pull request and status blocks', () => {
         renderedBlocks={[rendered('narrow')]}
       />,
     );
-    expect(container.querySelectorAll('[data-level]')).toHaveLength(17 * 7);
+    expect(container.querySelectorAll('rect[width="10"][height="10"]')).toHaveLength(17 * 7);
 
     rerender(
       <WidgetCanvas
@@ -118,7 +121,7 @@ describe('GitHub activity, pull request and status blocks', () => {
       />,
     );
     // Full-width block: (510 + 3) / 13 → 39 weeks.
-    expect(container.querySelectorAll('[data-level]')).toHaveLength(39 * 7);
+    expect(container.querySelectorAll('rect[width="10"][height="10"]')).toHaveLength(39 * 7);
   });
 
   it('hides streaks and the heatmap when turned off', () => {
@@ -139,7 +142,7 @@ describe('GitHub activity, pull request and status blocks', () => {
     );
     expect(screen.getByText('Коммиты')).toBeInTheDocument();
     expect(screen.queryByText('Дней подряд')).not.toBeInTheDocument();
-    expect(container.querySelector('[data-level]')).toBeNull();
+    expect(container.querySelector('rect[width="10"][height="10"]')).toBeNull();
   });
 
   it('shows the pull request breakdown in percent', () => {
