@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Blocks adapt to their size: every block has compact 1×1 tile, 2×1 strip and 4×1 wide-strip layouts (e.g. avatar + followers, top language %, a compact heatmap, merged %, status emoji, solved count), plus roomier 4×2 layouts for the GitHub profile and LeetCode. Text fits itself to any size.
+- When there's no room for a new block at its default size, it's added in the largest smaller size that fits.
 - Added three GitHub blocks: Activity (commits this year, current and best streak, and a contribution heatmap that shows as many weeks as fit the block), Pull Requests (total, merged, open with a status breakdown) and Status (emoji, message, busy flag), plus a "GitHub Activity" preset. They use the GitHub GraphQL API and need `GITHUB_TOKEN` on the server.
 - Added password reset by email ("Forgot password?" on sign-in) and email confirmation after sign-up, with a resend option on the account page. Emails are sent through Resend once `RESEND_API_KEY` and `EMAIL_FROM` are configured; until then the features stay hidden in production and emails are printed to the server log in development.
 - Added an account page with sign-in methods: connect Yandex ID to an existing account, or disconnect it when a password remains.

@@ -28,19 +28,31 @@ A block declares the sizes it supports (`server/src/shared/widget/blockSizes.ts`
 corner resize snaps to them and the server rejects anything else. Each supported size has its own
 layout ("variant") instead of scaling one design. Not every block needs every size.
 
-Planned variant matrix (✓ = supported):
+Variant families by size (`blockVariant` in `blockSizes.ts`):
 
-| Block          | 1×1                | 2×1                     | 2×2                         | 4×1                           | 4×2                          | other                             |
-| -------------- | ------------------ | ----------------------- | --------------------------- | ----------------------------- | ---------------------------- | --------------------------------- |
-| text           | short text         | ✓                       | ✓                           | ✓                             | ✓                            | 3×1, 3×2, 4×3 (font fits the box) |
-| github-stats   | avatar + followers | avatar, name, @user     | card: avatar, name, 3 stats | identity left, stats right    | big avatar, name, bio, stats |                                   |
-| github-langs   | top language + %   | bar + top-3 legend      | bar + list (≤ 6)            | wide bar + inline legend      | bar + 2-column list (≤ 8)    |                                   |
-| github-commits | commits + streak   | commits + streak        | stats + ~19-week heatmap    | caption + 40-week heatmap     | stats + 40-week heatmap      |                                   |
-| github-prs     | merged %           | total + merged          | stats + bar + legend        | stats + bar inline            | —                            |                                   |
-| github-status  | emoji (+ busy dot) | emoji + 2-line message  | emoji, message, busy        | emoji + one-line message      | —                            |                                   |
-| leetcode-stats | solved             | solved + difficulty bar | title, 3 stats, difficulty  | inline stats + difficulty bar | full + per-difficulty bars   |                                   |
+| Family  | Sizes         | Idea                                           |
+| ------- | ------------- | ---------------------------------------------- |
+| `tiny`  | 1×1           | one headline number or symbol                  |
+| `strip` | 2×1, 3×1      | title + 2–3 facts in one line                  |
+| `wide`  | 4×1           | title + a full row of facts or a compact chart |
+| `card`  | 2×2, 3×2, 2×4 | the classic block                              |
+| `large` | 4×2, 4×3, 4×4 | roomy layout; blocks without one use `card`    |
 
-Defaults: new blocks are 2×2 (text 2×1), placed at the first free spot.
+Implemented layouts (renderers in `server/src/shared/widget/blocks/`):
+
+| Block          | 1×1                                                                            | 2×1                               | 4×1                                   | 2×2                    | 4×2                              |
+| -------------- | ------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------- | ---------------------- | -------------------------------- |
+| text           | text fitted to the box, centred vertically, in every size (also 3×1, 3×2, 4×3) |                                   |                                       |                        |                                  |
+| github-stats   | avatar + followers                                                             | avatar, name, @user, summary line | identity left, 3 stats right          | card                   | big avatar, name, bio, stats row |
+| github-langs   | top language % + mix bar                                                       | bar + 2-language legend           | bar + 4-language legend               | card                   | card                             |
+| github-commits | commits + 🔥 streak                                                            | commits + current streak          | caption + compact heatmap (~48 weeks) | card (19-week heatmap) | card (40-week heatmap)           |
+| github-prs     | merged % + breakdown bar                                                       | total / merged / open             | + closed, breakdown bar               | card                   | card                             |
+| github-status  | emoji (+ busy dot)                                                             | emoji + 2-line message            | emoji + 1-line message                | card                   | card                             |
+| leetcode-stats | solved + difficulty bar                                                        | solved, ranking + difficulty bar  | + contest rating                      | card                   | stats + one bar per difficulty   |
+
+Every block also keeps the doubled legacy sizes (2×2, 2×4, 4×2, 4×4) so migrated widgets stay
+valid. Defaults: new blocks are 2×2 (text 2×1); when that doesn't fit, the next smaller allowed
+size that does is used (`placementSizes`).
 
 ## Block limit and plan tiers
 

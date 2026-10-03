@@ -6,20 +6,57 @@ export type BlockSize = { width: number; height: number };
 
 const size = (width: number, height: number): BlockSize => ({ width, height });
 
-// The 2-column grid's sizes, doubled: what every block could do before size variants.
+// The 2-column grid's sizes, doubled. Every block keeps them so migrated widgets stay valid; they
+// render with the "card" / "large" variants.
 const LEGACY_SIZES = [size(2, 2), size(2, 4), size(4, 2), size(4, 4)];
+// Compact sizes with dedicated layouts: tile, strip and wide strip.
+const COMPACT_SIZES = [size(1, 1), size(2, 1), size(4, 1)];
 
 export const BLOCK_SIZES: Record<string, BlockSize[]> = {
-  text: LEGACY_SIZES,
-  'github-stats': LEGACY_SIZES,
-  'github-langs': LEGACY_SIZES,
-  'github-commits': LEGACY_SIZES,
-  'github-prs': LEGACY_SIZES,
-  'github-status': LEGACY_SIZES,
-  'leetcode-stats': LEGACY_SIZES,
+  text: [...COMPACT_SIZES, size(3, 1), size(3, 2), size(4, 3), ...LEGACY_SIZES],
+  'github-stats': [...COMPACT_SIZES, ...LEGACY_SIZES],
+  'github-langs': [...COMPACT_SIZES, ...LEGACY_SIZES],
+  'github-commits': [...COMPACT_SIZES, ...LEGACY_SIZES],
+  'github-prs': [...COMPACT_SIZES, ...LEGACY_SIZES],
+  'github-status': [...COMPACT_SIZES, ...LEGACY_SIZES],
+  'leetcode-stats': [...COMPACT_SIZES, ...LEGACY_SIZES],
 };
 
 export const DEFAULT_BLOCK_SIZE: BlockSize = size(2, 2);
+
+const DEFAULT_SIZES: Record<string, BlockSize> = { text: size(2, 1) };
+
+export const defaultBlockSize = (type: string) => DEFAULT_SIZES[type] ?? DEFAULT_BLOCK_SIZE;
+
+/**
+ * Sizes to try when placing a new block: the default first, then the other allowed sizes no
+ * larger than it, biggest first (so a nearly full widget still takes a compact block).
+ */
+export const placementSizes = (type: string): BlockSize[] => {
+  const preferred = defaultBlockSize(type);
+  const area = (item: BlockSize) => item.width * item.height;
+  const smaller = allowedBlockSizes(type)
+    .filter(
+      (item) =>
+        area(item) <= area(preferred) &&
+        !(item.width === preferred.width && item.height === preferred.height),
+    )
+    .sort((left, right) => area(right) - area(left) || right.width - left.width);
+  return [preferred, ...smaller];
+};
+
+/**
+ * Layout family for a block size: `tiny` 1×1 tile, `strip` 2–3×1, `wide` 4×1, `card` 2–3 columns
+ * × 2+ rows (the classic block look), `large` 4 columns × 2+ rows. A block without a dedicated
+ * `large` layout renders its `card` layout there.
+ */
+export type BlockVariant = 'tiny' | 'strip' | 'wide' | 'card' | 'large';
+
+export const blockVariant = (width: number, height: number): BlockVariant => {
+  if (width === 1) return 'tiny';
+  if (height === 1) return width >= 4 ? 'wide' : 'strip';
+  return width >= 4 ? 'large' : 'card';
+};
 
 export const allowedBlockSizes = (type: string) => BLOCK_SIZES[type] ?? LEGACY_SIZES;
 
