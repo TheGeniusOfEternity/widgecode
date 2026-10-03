@@ -303,6 +303,79 @@
   background: var(--color-hard);
 }
 
+.heatmap {
+  display: flex;
+  gap: var(--heatmap-gap);
+}
+
+.heatmap > span {
+  display: grid;
+  grid-template-rows: repeat(7, var(--heatmap-cell));
+  gap: var(--heatmap-gap);
+}
+
+.heatmap i {
+  display: block;
+  width: var(--heatmap-cell);
+  height: var(--heatmap-cell);
+  border-radius: 2.5px;
+  background: var(--widget-accent);
+}
+
+.heatmap i[data-level='0'] {
+  background: var(--widget-ink);
+}
+
+.pr-merged {
+  background: var(--widget-accent) !important;
+}
+
+.pr-open {
+  background: color-mix(in srgb, var(--widget-accent) 45%, transparent) !important;
+}
+
+.pr-closed {
+  background: color-mix(in srgb, var(--widget-ink) 20%, transparent) !important;
+}
+
+/* Mirrors the SVG: emoji line, message (up to 3 lines), busy chip. */
+.status {
+  display: grid;
+  justify-items: start;
+  gap: var(--block-heading-gap);
+}
+
+.statusEmoji {
+  font-size: var(--block-text);
+  line-height: var(--block-line-height);
+}
+
+.statusMessage {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--block-heading);
+  font-weight: 700;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+.statusBusy {
+  padding: 4px 10px;
+  color: var(--widget-accent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--widget-accent) 14%, transparent);
+  font-size: var(--block-meta);
+  font-weight: 700;
+}
+
+.statusEmpty {
+  color: color-mix(in srgb, var(--widget-ink) 60%, transparent);
+  font-size: var(--block-meta);
+}
+
 .error {
   margin: 0;
   color: var(--color-error);

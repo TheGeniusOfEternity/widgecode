@@ -2,7 +2,15 @@ import { z } from 'zod';
 
 import { MAX_BLOCK_HEIGHT, MAX_GRID_COLUMNS } from '@shared/widget/geometry.js';
 
-export const BLOCK_TYPES = ['text', 'github-stats', 'github-langs', 'leetcode-stats'] as const;
+export const BLOCK_TYPES = [
+  'text',
+  'github-stats',
+  'github-langs',
+  'github-commits',
+  'github-prs',
+  'github-status',
+  'leetcode-stats',
+] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
 export const SOURCE_TYPES = ['github', 'leetcode'] as const;
@@ -63,6 +71,21 @@ const blockSchemas: Record<BlockType, z.ZodType> = {
     limit: z.number().int().min(3).max(8).default(5),
     ...sharedBlockFields,
   }),
+  'github-commits': z.object({
+    username: usernameSchema,
+    showStreak: z.boolean().default(true),
+    showHeatmap: z.boolean().default(true),
+    ...sharedBlockFields,
+  }),
+  'github-prs': z.object({
+    username: usernameSchema,
+    showBreakdown: z.boolean().default(true),
+    ...sharedBlockFields,
+  }),
+  'github-status': z.object({
+    username: usernameSchema,
+    ...sharedBlockFields,
+  }),
   'leetcode-stats': z.object({
     username: usernameSchema,
     showRanking: z.boolean().default(true),
@@ -117,6 +140,14 @@ export const presetDefinitions = {
     label: 'GitHub Languages',
     source: 'github',
     blocks: [{ type: 'github-langs', config: { limit: 5 } }],
+  },
+  'github-activity': {
+    label: 'GitHub Activity',
+    source: 'github',
+    blocks: [
+      { type: 'github-commits', config: {} },
+      { type: 'github-prs', config: {} },
+    ],
   },
   'leetcode-profile': {
     label: 'LeetCode Profile',

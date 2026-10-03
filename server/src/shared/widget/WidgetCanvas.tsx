@@ -4,13 +4,18 @@ import {
   BLOCK_PADDING,
   BLOCK_RADIUS,
   CANVAS_RADIUS,
+  HEATMAP_CELL,
+  HEATMAP_GAP,
   MAX_BLOCK_HEIGHT,
   MAX_GRID_COLUMNS,
   TEXT_BLOCK_LINE_HEIGHT,
   blockBox,
   blockContentWidth,
   blockTypography,
+  estimateTextWidth,
   gridRows,
+  heatmapColumns,
+  heatmapWeeks,
   type BlockTypography,
   type GridLayout,
 } from './geometry.js';
@@ -18,6 +23,7 @@ import {
   difficultyColors,
   errorColor,
   formatStatValue,
+  heatmapOpacity,
   languageColor,
   paletteTokens,
   widgetLabels,
@@ -110,10 +116,14 @@ const layoutOf = (block: WidgetCanvasBlock): GridLayout => {
 const baseline = (top: number, size: number, lineHeight = BLOCK_LINE_HEIGHT) =>
   top + size * ((lineHeight - 1.2109) / 2 + 0.96875);
 
-// SVG has no text layout, so widths are estimated from an average glyph width.
-const fitText = (value: string, width: number, size: number, glyph = 0.56) => {
-  const maxLength = Math.max(Math.floor(width / (size * glyph)), 1);
-  return value.length > maxLength ? `${value.slice(0, Math.max(maxLength - 1, 1))}…` : value;
+// SVG has no text layout: cut text with an ellipsis where the HTML canvas would.
+const fitText = (value: string, width: number, size: number, weight = 500) => {
+  if (estimateTextWidth(value, size, { weight }) <= width) return value;
+  let end = value.length;
+  while (end > 1 && estimateTextWidth(`${value.slice(0, end)}…`, size, { weight }) > width) {
+    end -= 1;
+  }
+  return `${value.slice(0, end)}…`;
 };
 
 const linesOf = (value: string, maxLength: number, maxLines: number) => {
@@ -260,13 +270,17 @@ const TitleRow = ({
   const { typography: t } = frame;
   const rowHeight = t.heading * BLOCK_LINE_HEIGHT;
   const metaTop = (rowHeight - t.meta * BLOCK_LINE_HEIGHT) / 2;
-  const metaWidth = Math.min(meta.length * t.meta * 0.56, frame.width * 0.45);
+  // Like the HTML flex row: the title keeps its width, the meta shrinks (max 45%) with a gap of 12.
+  const titleWidth = Math.min(estimateTextWidth(title, t.heading, { weight: 800 }), frame.width);
+  const metaMaxWidth = Math.max(Math.min(frame.width * 0.45, frame.width - titleWidth - 12), 0);
+  const metaText = fitText(meta, metaMaxWidth, t.meta);
+  const metaWidth = metaText ? estimateTextWidth(metaText, t.meta) : 0;
   return (
     <>
       <SvgText
         x={0}
         y={baseline(0, t.heading)}
-        value={fitText(title, frame.width - metaWidth - 12, t.heading, 0.6)}
+        value={fitText(title, frame.width - metaWidth - 12, t.heading, 800)}
         fill={tokens.ink}
         size={t.heading}
         weight={800}
@@ -274,7 +288,7 @@ const TitleRow = ({
       <SvgText
         x={frame.width}
         y={baseline(metaTop, t.meta)}
-        value={fitText(meta, frame.width * 0.45, t.meta)}
+        value={metaText}
         fill={tokens.ink}
         size={t.meta}
         anchor="end"
@@ -477,7 +491,7 @@ const BlockContent = ({
         <SvgText
           x={textX}
           y={baseline(textTop, t.heading)}
-          value={fitText(asString(data.name, labels.githubProfile), textWidth, t.heading, 0.6)}
+          value={fitText(asString(data.name, labels.githubProfile), textWidth, t.heading, 800)}
           fill={tokens.ink}
           size={t.heading}
           weight={800}
@@ -563,7 +577,7 @@ const BlockContent = ({
                 y={baseline(top, t.meta)}
                 value={fitText(
                   language.name,
-                  columnWidth - 13 - percent.length * t.meta * 0.6 - 6,
+                  columnWidth - 13 - estimateTextWidth(percent, t.meta, { weight: 700 }) - 6,
                   t.meta,
                 )}
                 fill={tokens.ink}
@@ -582,6 +596,230 @@ const BlockContent = ({
             </g>
           );
         })}
+      </>
+    );
+  }
+
+  if (block.type === 'github-commits') {
+    const stats: StatItem[] = [
+      { label: labels.commits, value: data.commitsYear },
+      ...(config.showStreak !== false
+        ? [
+            { label: labels.currentStreak, value: data.currentStreak },
+            { label: labels.longestStreak, value: data.longestStreak },
+          ]
+        : []),
+    ];
+    const statsTop = t.heading * BLOCK_LINE_HEIGHT + t.sectionGap;
+    const heatmapTop = statsTop + statsRowHeight(t) + t.sectionGap;
+    const levels = Array.isArray(data.levels)
+      ? data.levels.filter((level): level is number => typeof level === 'number')
+      : [];
+    const columns = heatmapColumns(
+      levels,
+      heatmapWeeks(frame.width),
+      asNumber(data.firstDayOfWeek),
+    );
+    return (
+      <>
+        <TitleRow
+          title={labels.activity}
+          meta={`@${asString(data.username, username || 'username')}`}
+          frame={frame}
+          tokens={tokens}
+        />
+        <StatsRow top={statsTop} items={stats} frame={frame} tokens={tokens} />
+        {config.showHeatmap !== false &&
+          columns.map((column, week) =>
+            column.map((level, weekday) =>
+              level === null ? null : (
+                <rect
+                  key={`${week}-${weekday}`}
+                  x={week * (HEATMAP_CELL + HEATMAP_GAP)}
+                  y={heatmapTop + weekday * (HEATMAP_CELL + HEATMAP_GAP)}
+                  width={HEATMAP_CELL}
+                  height={HEATMAP_CELL}
+                  rx={2.5}
+                  fill={level === 0 ? tokens.ink : tokens.accent}
+                  fillOpacity={heatmapOpacity[level] ?? heatmapOpacity[0]}
+                />
+              ),
+            ),
+          )}
+      </>
+    );
+  }
+
+  if (block.type === 'github-prs') {
+    const total = asNumber(data.total);
+    const parts = [
+      { label: labels.merged, value: asNumber(data.merged), fill: tokens.accent, opacity: 1 },
+      { label: labels.open, value: asNumber(data.open), fill: tokens.accent, opacity: 0.45 },
+      { label: labels.closed, value: asNumber(data.closed), fill: tokens.ink, opacity: 0.2 },
+    ];
+    const statsTop = t.heading * BLOCK_LINE_HEIGHT + t.sectionGap;
+    const barY = statsTop + statsRowHeight(t) + t.sectionGap;
+    const legendTop = barY + 10 + t.sectionGap;
+    const legendWidth = (frame.width - t.columnGap) / 2;
+    const legendRowHeight = t.meta * BLOCK_LINE_HEIGHT;
+    const barClipId = `prs-${safeId(block.id)}`;
+    let barOffset = 0;
+    return (
+      <>
+        <TitleRow
+          title={labels.pullRequests}
+          meta={`@${asString(data.username, username || 'username')}`}
+          frame={frame}
+          tokens={tokens}
+        />
+        <StatsRow
+          top={statsTop}
+          items={[
+            { label: labels.total, value: data.total },
+            { label: labels.merged, value: data.merged },
+            { label: labels.open, value: data.open },
+          ]}
+          frame={frame}
+          tokens={tokens}
+        />
+        {config.showBreakdown !== false && (
+          <>
+            <clipPath id={barClipId}>
+              <rect y={barY} width={frame.width} height={10} rx={5} />
+            </clipPath>
+            <g clipPath={`url(#${barClipId})`}>
+              <rect y={barY} width={frame.width} height={10} fill={tokens.ink} fillOpacity={0.1} />
+              {total > 0 &&
+                parts.map((part) => {
+                  const width = (part.value / total) * frame.width;
+                  const x = barOffset;
+                  barOffset += width;
+                  return (
+                    <rect
+                      key={part.label}
+                      x={x}
+                      y={barY}
+                      width={width}
+                      height={10}
+                      fill={part.fill}
+                      fillOpacity={part.opacity}
+                    />
+                  );
+                })}
+            </g>
+            {parts.map((part, index) => {
+              // Same two-column list as the languages block: label left, percent right.
+              const x = (index % 2) * (legendWidth + t.columnGap);
+              const top = legendTop + Math.floor(index / 2) * (legendRowHeight + t.rowGap);
+              const percent = `${total > 0 ? Math.round((part.value / total) * 100) : 0}%`;
+              return (
+                <g key={part.label}>
+                  <circle
+                    cx={x + 3.5}
+                    cy={top + legendRowHeight / 2}
+                    r={3.5}
+                    fill={part.fill}
+                    fillOpacity={part.opacity}
+                  />
+                  <SvgText
+                    x={x + 13}
+                    y={baseline(top, t.meta)}
+                    value={fitText(
+                      part.label,
+                      legendWidth - 13 - estimateTextWidth(percent, t.meta, { weight: 700 }) - 6,
+                      t.meta,
+                    )}
+                    fill={tokens.ink}
+                    size={t.meta}
+                    opacity={0.6}
+                  />
+                  <SvgText
+                    x={x + legendWidth}
+                    y={baseline(top, t.meta)}
+                    value={percent}
+                    fill={tokens.ink}
+                    size={t.meta}
+                    weight={700}
+                    anchor="end"
+                  />
+                </g>
+              );
+            })}
+          </>
+        )}
+      </>
+    );
+  }
+
+  if (block.type === 'github-status') {
+    const emoji = asString(data.emoji);
+    const message = asString(data.message);
+    const top = t.heading * BLOCK_LINE_HEIGHT + t.sectionGap;
+    const messageTop = emoji ? top + t.text * BLOCK_LINE_HEIGHT + t.headingGap : top;
+    const messageLines = message
+      ? linesOf(message, Math.floor(frame.width / (t.heading * 0.55)), 3)
+      : [];
+    const chipTop = messageTop + messageLines.length * t.heading * BLOCK_LINE_HEIGHT + t.headingGap;
+    const chipHeight = t.meta * BLOCK_LINE_HEIGHT + 8;
+    return (
+      <>
+        <TitleRow
+          title={labels.status}
+          meta={`@${asString(data.username, username || 'username')}`}
+          frame={frame}
+          tokens={tokens}
+        />
+        {!emoji && !message ? (
+          <SvgText
+            x={0}
+            y={baseline(top, t.meta)}
+            value={labels.noStatus}
+            fill={tokens.ink}
+            size={t.meta}
+            opacity={0.6}
+          />
+        ) : (
+          <>
+            {emoji && (
+              <SvgText
+                x={0}
+                y={baseline(top, t.text)}
+                value={emoji}
+                fill={tokens.ink}
+                size={t.text}
+              />
+            )}
+            <MultilineText
+              x={0}
+              top={messageTop}
+              lineHeight={BLOCK_LINE_HEIGHT}
+              lines={messageLines}
+              fill={tokens.ink}
+              size={t.heading}
+              weight={700}
+            />
+            {data.busy === true && (
+              <g>
+                <rect
+                  y={chipTop}
+                  width={estimateTextWidth(labels.busy, t.meta, { weight: 700 }) + 20}
+                  height={chipHeight}
+                  rx={chipHeight / 2}
+                  fill={tokens.accent}
+                  fillOpacity={0.14}
+                />
+                <SvgText
+                  x={10}
+                  y={baseline(chipTop + 4, t.meta)}
+                  value={labels.busy}
+                  fill={tokens.accent}
+                  size={t.meta}
+                  weight={700}
+                />
+              </g>
+            )}
+          </>
+        )}
       </>
     );
   }

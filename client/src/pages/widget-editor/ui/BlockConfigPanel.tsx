@@ -26,12 +26,19 @@ export const BlockConfigPanel = ({
           ['showFollowers', locale === 'ru' ? 'Подписчики' : 'Followers'],
           ['showFollowing', locale === 'ru' ? 'Подписки' : 'Following'],
         ]
-      : block.type === 'leetcode-stats'
+      : block.type === 'github-commits'
         ? [
-            ['showRanking', locale === 'ru' ? 'Рейтинг' : 'Ranking'],
-            ['showContestRating', locale === 'ru' ? 'Рейтинг соревнований' : 'Contest rating'],
+            ['showStreak', locale === 'ru' ? 'Серии дней' : 'Streaks'],
+            ['showHeatmap', locale === 'ru' ? 'Карта активности' : 'Contribution heatmap'],
           ]
-        : [];
+        : block.type === 'github-prs'
+          ? [['showBreakdown', locale === 'ru' ? 'Разбивка по статусам' : 'Status breakdown']]
+          : block.type === 'leetcode-stats'
+            ? [
+                ['showRanking', locale === 'ru' ? 'Рейтинг' : 'Ranking'],
+                ['showContestRating', locale === 'ru' ? 'Рейтинг соревнований' : 'Contest rating'],
+              ]
+            : [];
   return (
     <section className={styles.settingsSection}>
       <div className={styles.panelHeading}>

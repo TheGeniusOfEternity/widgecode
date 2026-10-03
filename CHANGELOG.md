@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Added three GitHub blocks: Activity (commits this year, current and best streak, and a contribution heatmap that shows as many weeks as fit the block), Pull Requests (total, merged, open with a status breakdown) and Status (emoji, message, busy flag), plus a "GitHub Activity" preset. They use the GitHub GraphQL API and need `GITHUB_TOKEN` on the server.
 - Added password reset by email ("Forgot password?" on sign-in) and email confirmation after sign-up, with a resend option on the account page. Emails are sent through Resend once `RESEND_API_KEY` and `EMAIL_FROM` are configured; until then the features stay hidden in production and emails are printed to the server log in development.
 - Added an account page with sign-in methods: connect Yandex ID to an existing account, or disconnect it when a password remains.
 - Added 404 and 500 pages for unknown addresses, missing or unpublished widgets, failed widget loads, and unexpected rendering errors.
@@ -16,6 +17,7 @@ All notable changes to this project are documented here.
 
 ### Changed
 
+- SVG text truncation and stat number formatting now use a per-character width estimate calibrated to the widget font (Cyrillic, bold and `%` are wider), so the SVG export cuts text in the same places as the HTML widget.
 - Split the 1,200-line widget editor into layout rules, state/autosave, drag and preview hooks, and focused UI components, and shared the embed snippet builder between the gallery and the editor.
 - Added client tests for widget rendering, scaling, editor layout rules and autosave, the API client token refresh, and the auth store.
 - Removed the automatic palette mode; widgets are either light or dark, and existing auto widgets open as light.

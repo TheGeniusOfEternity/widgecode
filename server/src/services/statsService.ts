@@ -225,6 +225,180 @@ const getGithubLanguages = async (username: string, limit: number) => {
   };
 };
 
+// --- GitHub GraphQL blocks (activity, pull requests, status); GraphQL always needs a token.
+
+const githubGraphql = async <T>(query: string, variables: Record<string, unknown>) => {
+  if (!process.env.GITHUB_TOKEN?.trim()) {
+    throw new AppError(503, 'Add GITHUB_TOKEN on the server to show this block');
+  }
+  const response = await fetchJson<{ data?: T; errors?: { type?: string; message: string }[] }>(
+    'https://api.github.com/graphql',
+    {
+      method: 'POST',
+      headers: { ...githubHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    },
+    githubRateLimitMessage,
+  );
+  if (response.errors?.some((error) => error.type === 'NOT_FOUND')) {
+    throw new AppError(404, 'GitHub profile not found');
+  }
+  if (response.errors?.length || !response.data) {
+    throw new AppError(502, 'GitHub API returned an error');
+  }
+  return response.data;
+};
+
+const CONTRIBUTION_LEVELS: Record<string, number> = {
+  NONE: 0,
+  FIRST_QUARTILE: 1,
+  SECOND_QUARTILE: 2,
+  THIRD_QUARTILE: 3,
+  FOURTH_QUARTILE: 4,
+};
+
+type GithubActivityResponse = {
+  user: {
+    login: string;
+    contributionsCollection: {
+      totalCommitContributions: number;
+      contributionCalendar: {
+        weeks: {
+          contributionDays: {
+            date: string;
+            contributionCount: number;
+            contributionLevel: string;
+          }[];
+        }[];
+      };
+    };
+  } | null;
+};
+
+/** Current streak ends today or yesterday (today may simply not have activity yet). */
+export const contributionStreaks = (counts: number[]) => {
+  let longest = 0;
+  let run = 0;
+  for (const count of counts) {
+    run = count > 0 ? run + 1 : 0;
+    longest = Math.max(longest, run);
+  }
+  let current = 0;
+  let index = counts.length - 1;
+  if (index >= 0 && counts[index] === 0) index -= 1;
+  while (index >= 0 && counts[index] > 0) {
+    current += 1;
+    index -= 1;
+  }
+  return { current, longest };
+};
+
+const getGithubActivity = async (username: string) => {
+  const data = await getCached(`github:${username}:activity`, () =>
+    githubGraphql<GithubActivityResponse>(
+      `query userActivity($login: String!) {
+        user(login: $login) {
+          login
+          contributionsCollection {
+            totalCommitContributions
+            contributionCalendar { weeks { contributionDays { date contributionCount contributionLevel } } }
+          }
+        }
+      }`,
+      { login: username },
+    ),
+  );
+  if (!data.user) throw new AppError(404, 'GitHub profile not found');
+  const days = data.user.contributionsCollection.contributionCalendar.weeks.flatMap(
+    (week) => week.contributionDays,
+  );
+  const streaks = contributionStreaks(days.map((day) => day.contributionCount));
+  return {
+    username: data.user.login,
+    commitsYear: data.user.contributionsCollection.totalCommitContributions,
+    currentStreak: streaks.current,
+    longestStreak: streaks.longest,
+    // Oldest → newest; the calendar starts on a Sunday, so days group into weeks of 7.
+    levels: days.map((day) => CONTRIBUTION_LEVELS[day.contributionLevel] ?? 0),
+    firstDayOfWeek: days.length ? new Date(`${days[0].date}T00:00:00Z`).getUTCDay() : 0,
+  };
+};
+
+type GithubPullRequestsResponse = {
+  user: {
+    login: string;
+    all: { totalCount: number };
+    merged: { totalCount: number };
+    open: { totalCount: number };
+  } | null;
+};
+
+const getGithubPullRequests = async (username: string) => {
+  const data = await getCached(`github:${username}:pull-requests`, () =>
+    githubGraphql<GithubPullRequestsResponse>(
+      `query userPullRequests($login: String!) {
+        user(login: $login) {
+          login
+          all: pullRequests { totalCount }
+          merged: pullRequests(states: MERGED) { totalCount }
+          open: pullRequests(states: OPEN) { totalCount }
+        }
+      }`,
+      { login: username },
+    ),
+  );
+  if (!data.user) throw new AppError(404, 'GitHub profile not found');
+  const { all, merged, open } = data.user;
+  return {
+    username: data.user.login,
+    total: all.totalCount,
+    merged: merged.totalCount,
+    open: open.totalCount,
+    closed: Math.max(all.totalCount - merged.totalCount - open.totalCount, 0),
+  };
+};
+
+type GithubStatusResponse = {
+  user: {
+    login: string;
+    status: {
+      emojiHTML: string | null;
+      message: string | null;
+      indicatesLimitedAvailability: boolean;
+    } | null;
+  } | null;
+};
+
+// emojiHTML is markup like `<div><g-emoji …>🚀</g-emoji></div>`; custom emoji are images and
+// can't be shown as text, so they are dropped.
+export const emojiFromHtml = (html: string | null | undefined) => {
+  if (!html || /<img/i.test(html)) return null;
+  const text = html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .trim();
+  return text || null;
+};
+
+const getGithubStatus = async (username: string) => {
+  const data = await getCached(`github:${username}:status`, () =>
+    githubGraphql<GithubStatusResponse>(
+      `query userStatus($login: String!) {
+        user(login: $login) { login status { emojiHTML message indicatesLimitedAvailability } }
+      }`,
+      { login: username },
+    ),
+  );
+  if (!data.user) throw new AppError(404, 'GitHub profile not found');
+  const status = data.user.status;
+  return {
+    username: data.user.login,
+    emoji: emojiFromHtml(status?.emojiHTML),
+    message: status?.message?.trim() || null,
+    busy: Boolean(status?.indicatesLimitedAvailability),
+  };
+};
+
 type LeetcodeResponse = {
   data?: {
     matchedUser?: {
@@ -324,6 +498,9 @@ const getBlockData = async (
     const limit = typeof blockConfig.limit === 'number' ? blockConfig.limit : 5;
     return { data: await getGithubLanguages(username, limit) };
   }
+  if (type === 'github-commits') return { data: await getGithubActivity(username) };
+  if (type === 'github-prs') return { data: await getGithubPullRequests(username) };
+  if (type === 'github-status') return { data: await getGithubStatus(username) };
   return { data: await getLeetcodeStats(username) };
 };
 

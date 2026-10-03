@@ -6,8 +6,15 @@ import { MAX_BLOCKS } from '@/pages/widget-editor/model/layout';
 import { messages, type Locale } from '@/shared/locale/content';
 import styles from '@/pages/widget-editor/ui/WidgetEditorPage.module.css';
 
-const glyphFor = (type: BlockType) =>
-  type === 'text' ? 'T' : type.startsWith('github') ? 'GH' : 'LC';
+const glyphs: Partial<Record<BlockType, string>> = {
+  text: 'T',
+  'github-commits': 'AC',
+  'github-prs': 'PR',
+  'github-status': 'ST',
+  'leetcode-stats': 'LC',
+};
+
+const glyphFor = (type: BlockType) => glyphs[type] ?? 'GH';
 
 export const BlockLibrary = ({
   locale,

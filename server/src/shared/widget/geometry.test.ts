@@ -52,3 +52,16 @@ it('switches stats to compact notation only when they do not fit the column', as
   expect(formatStatValue(2204.316)).toBe('2,204');
   expect(formatStatValue(null)).toBe('—');
 });
+
+it('estimates wider text for Cyrillic and bold weights', async () => {
+  const { estimateTextWidth } = await import('@shared/widget/geometry.js');
+  // Calibrated against the browser: "Смёрджено" at 10.125px/500 renders ~61px wide.
+  expect(estimateTextWidth('Смёрджено', 10.125)).toBeCloseTo(61, 0);
+  expect(estimateTextWidth('Merged', 10)).toBeLessThan(estimateTextWidth('Смёрджено', 10));
+  expect(estimateTextWidth('123', 10, { weight: 800 })).toBeGreaterThan(
+    estimateTextWidth('123', 10),
+  );
+  expect(estimateTextWidth('123', 10, { letterSpacing: -0.06 })).toBeCloseTo(
+    estimateTextWidth('123', 10) - 1.8,
+  );
+});

@@ -18,9 +18,11 @@ import {
   MAX_GRID_COLUMNS,
   WIDGET_WIDTH,
   gridRows,
+  heatmapColumns,
+  heatmapWeeks,
   widgetDimensions,
 } from '@shared/widget/geometry';
-import { formatStatValue, languageColor, widgetLabels } from '@shared/widget/theme';
+import { formatStatValue, heatmapOpacity, languageColor, widgetLabels } from '@shared/widget/theme';
 import styles from '@/entities/widget/ui/WidgetCanvas.module.css';
 
 type WidgetLocale = 'ru' | 'en';
@@ -55,6 +57,21 @@ const sampleData: Record<BlockType, Record<string, unknown>> = {
       { name: 'CSS', percentage: 14 },
       { name: 'Other', percentage: 8 },
     ],
+  },
+  'github-commits': {
+    username: 'octocat',
+    commitsYear: 1_284,
+    currentStreak: 12,
+    longestStreak: 47,
+    levels: Array.from({ length: 364 }, (_, day) => [0, 1, 2, 1, 3, 0, 4, 2, 1][(day * 7) % 9]),
+    firstDayOfWeek: 0,
+  },
+  'github-prs': { username: 'octocat', total: 214, merged: 176, open: 6, closed: 32 },
+  'github-status': {
+    username: 'octocat',
+    emoji: '🚀',
+    message: 'Shipping new widgets',
+    busy: false,
   },
   'leetcode-stats': {
     username: 'your-profile',
@@ -107,6 +124,18 @@ const formatNumber = (value: unknown, fallback = '—') =>
   typeof value === 'number' && Number.isFinite(value) ? numberFormatter.format(value) : fallback;
 
 type BlockData = {
+  commitsYear?: number;
+  currentStreak?: number;
+  longestStreak?: number;
+  levels?: number[];
+  firstDayOfWeek?: number;
+  total?: number;
+  merged?: number;
+  open?: number;
+  closed?: number;
+  emoji?: string | null;
+  message?: string | null;
+  busy?: boolean;
   username?: string;
   name?: string;
   avatarUrl?: string;
@@ -232,6 +261,119 @@ export const WidgetBlockContent = ({
             </span>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (block.type === 'github-commits') {
+    const stats = [
+      { label: labels.commits, value: data.commitsYear },
+      ...(block.config.showStreak !== false
+        ? [
+            { label: labels.currentStreak, value: data.currentStreak },
+            { label: labels.longestStreak, value: data.longestStreak },
+          ]
+        : []),
+    ];
+    const columns = heatmapColumns(
+      data.levels ?? [],
+      heatmapWeeks(blockMetrics(getBlockLayout(block)).contentWidth),
+      data.firstDayOfWeek ?? 0,
+    );
+    return (
+      <div className={styles.statsBlock}>
+        <div className={styles.blockTitleRow}>
+          <strong>{labels.activity}</strong>
+          <span>@{data.username || username || 'username'}</span>
+        </div>
+        <StatsRow items={stats} block={block} />
+        {block.config.showHeatmap !== false && (
+          <div className={styles.heatmap} aria-hidden="true">
+            {columns.map((column, week) => (
+              <span key={week}>
+                {column.map((level, weekday) => (
+                  <i
+                    key={weekday}
+                    data-level={level ?? undefined}
+                    style={
+                      level === null
+                        ? { visibility: 'hidden' }
+                        : { opacity: heatmapOpacity[level] ?? heatmapOpacity[0] }
+                    }
+                  />
+                ))}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (block.type === 'github-prs') {
+    const total = data.total ?? 0;
+    const parts = [
+      { key: 'merged', label: labels.merged, value: data.merged ?? 0 },
+      { key: 'open', label: labels.open, value: data.open ?? 0 },
+      { key: 'closed', label: labels.closed, value: data.closed ?? 0 },
+    ];
+    return (
+      <div className={styles.statsBlock}>
+        <div className={styles.blockTitleRow}>
+          <strong>{labels.pullRequests}</strong>
+          <span>@{data.username || username || 'username'}</span>
+        </div>
+        <StatsRow
+          items={[
+            { label: labels.total, value: data.total },
+            { label: labels.merged, value: data.merged },
+            { label: labels.open, value: data.open },
+          ]}
+          block={block}
+        />
+        {block.config.showBreakdown !== false && (
+          <>
+            <div className={styles.languageBar}>
+              {total > 0 &&
+                parts.map((part) => (
+                  <span
+                    key={part.key}
+                    className={styles[`pr-${part.key}`]}
+                    style={{ width: `${(part.value / total) * 100}%` }}
+                  />
+                ))}
+            </div>
+            <div className={styles.languageList}>
+              {parts.map((part) => (
+                <span key={part.key}>
+                  <i className={styles[`pr-${part.key}`]} />
+                  <span>{part.label}</span>
+                  <b>{total > 0 ? Math.round((part.value / total) * 100) : 0}%</b>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (block.type === 'github-status') {
+    return (
+      <div className={styles.statsBlock}>
+        <div className={styles.blockTitleRow}>
+          <strong>{labels.status}</strong>
+          <span>@{data.username || username || 'username'}</span>
+        </div>
+        {!data.emoji && !data.message ? (
+          <span className={styles.statusEmpty}>{labels.noStatus}</span>
+        ) : (
+          <div className={styles.status}>
+            {data.emoji && <span className={styles.statusEmoji}>{data.emoji}</span>}
+            {data.message && <p className={styles.statusMessage}>{data.message}</p>}
+            {data.busy && <span className={styles.statusBusy}>{labels.busy}</span>}
+          </div>
+        )}
       </div>
     );
   }
