@@ -1,41 +1,44 @@
 ---
 name: widget-render-parity
-description: Diagnose and fix size, padding, gap, scale, font, or background differences between the widget in the editor, the public page/iframe, and the exported SVG image, and keep them in sync when changing widget geometry or block visuals. Use for bugs like "widget looks different in SVG", "blocks are smaller in export", "preview scale is off", or any change to block layout/typography.
+description: Explains how WidgeCode renders widgets (one shared SVG renderer for the editor, public page, iframe and /image.svg export) and how to debug size, layout or text differences. Use for bugs like "widget looks different in SVG", "blocks are cut off", "preview scale is off", or when changing widget geometry or block visuals.
 ---
 
-# Widget render parity
+# Widget rendering
 
-## Architecture
+There is one renderer. Everything that draws a widget uses the same SVG React components from
+`server/src/shared/widget/` (imported on the client as `@shared/widget/*`).
 
-| Piece         | File                                                             | Role                                                                                                                                                                |
-| ------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Geometry      | `server/src/shared/widget/geometry.ts`                           | Width 600, `canvasPadding` (24), `GRID_GAP` 18, square `cellSize` (267), `BLOCK_PADDING` 20, radii, line heights, `widgetDimensions`, `blockBox`, `blockTypography` |
-| Theme         | `server/src/shared/widget/theme.ts`                              | Palettes, language/difficulty colors, ru/en block labels, `formatStatValue`                                                                                         |
-| HTML renderer | `client/src/entities/widget/ui/WidgetCanvas.tsx` + `.module.css` | Editor blocks, `/w/:slug`, iframe embed                                                                                                                             |
-| HTML bridge   | `client/src/entities/widget/lib/canvasStyle.ts`                  | Turns geometry into CSS custom properties (`canvasStyleVars`, `blockStyleVars`, `blockMetrics`)                                                                     |
-| Scaling       | `client/src/entities/widget/ui/ScaledWidgetFrame.tsx`            | Renders the canvas at stored size and scales it to fit (editor, public page)                                                                                        |
-| SVG renderer  | `server/src/shared/widget/WidgetCanvas.tsx`                      | `/api/public/widgets/:slug/image.svg`                                                                                                                               |
-| Stored size   | `widgetService.widgetDimensions` → shared `widgetDimensions`     | Drives iframe size and SVG viewBox                                                                                                                                  |
+| Piece         | File                                                  | Role                                                                                                                                                                           |
+| ------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Geometry      | `geometry.ts`                                         | Width 600, padding, gap, cell size, block padding, radii, line heights, `widgetDimensions`, `blockBox`, `blockTypography`, `estimateTextWidth`, heatmap sizing                 |
+| Theme         | `theme.ts`                                            | Palettes, colors, ru/en block labels, `formatStatValue`                                                                                                                        |
+| Primitives    | `svgPrimitives.tsx`                                   | `SvgText`, `MultilineText`, `TitleRow`, `StatsRow`, `fitText`, `linesOf`, `baseline`, `layoutOf`                                                                               |
+| Block content | `BlockContent.tsx`                                    | Per-type drawing inside a block's content box, plus skeleton / error / preview states                                                                                          |
+| Canvas parts  | `canvasParts.tsx`                                     | `CanvasBackground`, `BlockShell`, `CanvasEmptyState`, `canvasBoxes`, `canvasTokens`                                                                                            |
+| Export        | `WidgetCanvas.tsx`                                    | Composes the parts into one standalone `<svg>` for `/api/public/widgets/:slug/image.svg`                                                                                       |
+| Browser       | `client/src/entities/widget/ui/WidgetSurface.tsx`     | Same parts, but the background and each block are separate `<svg>`s placed with `canvasBoxes`, so the editor can attach DOM controls (drag handle, size, remove) to each block |
+| Scaling       | `client/src/entities/widget/ui/ScaledWidgetFrame.tsx` | Renders at stored size and scales to fit (editor, public page)                                                                                                                 |
 
 Rules:
 
-- A number that affects layout belongs in `geometry.ts` / `theme.ts`, never hard-coded in one renderer.
-- The HTML canvas CSS must only use the custom properties — no `vw`, `cqi`, `%` font sizes or media queries. Responsiveness comes from `ScaledWidgetFrame`, not reflow.
-- The SVG has no text layout: text widths are estimated (`fitText`, `linesOf`, glyph-width constants). HTML uses `nowrap` + ellipsis on the same elements so both truncate in the same places. `formatStatValue` picks full vs compact numbers from the same estimate in both renderers.
-- The SVG uses Inter metrics for baselines (`baseline()`); the HTML canvas sets the same font stack (`WIDGET_FONT_FAMILY`) and `--block-line-height`.
+- Layout numbers belong in `geometry.ts` / `theme.ts`.
+- SVG has no text layout: widths come from `estimateTextWidth` (per-character-class widths
+  calibrated to the font). Truncate with `fitText`, wrap with `linesOf`; never assume CSS will do it.
+- SVG ids (gradients, clip paths) must be prefixed per instance (`idPrefix`) — several widgets can
+  be on one page in the browser.
+- The export inlines images as data URIs; the browser uses URLs.
 
-## Changing block visuals
+## Debugging differences
 
-1. Change geometry/typography in `geometry.ts` if a size changes; expose new values in `blockStyleVars` and consume them in the CSS module.
-2. Update the HTML markup/CSS and the SVG block renderer in the same change, keeping the element order and gaps identical (the SVG comments name the CSS classes they mirror).
-3. Extend `server/src/shared/widget/geometry.test.ts` or `server/src/services/widgetCanvas.test.ts` with the new numbers.
+Because the code is shared, differences between the editor, iframe and export come from inputs,
+not drawing: different `height`/`rows` (the editor adds a spare row while dragging), different
+`renderedBlocks` (editor previews vs public data), locale (`?locale=` for the export), or fonts
+installed on the viewer's machine (affects real text width vs the estimate).
 
 ## Visual check
 
 1. `docker compose -p widgecode up -d`, then start the `api` and `client` launch configs (`.claude/launch.json`).
-2. Create/publish a test widget via the API (local test account), then open side by side at the same zoom:
-   - `/w/<slug>?embed=1` (iframe content, real size)
-   - `http://localhost:4000/api/public/widgets/<slug>/image.svg` (add `?locale=ru` to match a Russian UI)
-   - `/w/<slug>` and the editor `/widgets/<id>` (scaled)
-3. Known intentional difference: the SVG locale comes from `?locale=` rather than the app setting.
-4. Finish with the `verify` skill.
+2. Create/publish a test widget via the API (local test account), then compare at the same zoom:
+   `/w/<slug>?embed=1`, `http://localhost:4000/api/public/widgets/<slug>/image.svg?locale=ru`,
+   `/w/<slug>` and the editor `/widgets/<id>`.
+3. Finish with the `verify` skill.

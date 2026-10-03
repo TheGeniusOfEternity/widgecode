@@ -1,9 +1,8 @@
-import type { CSSProperties, RefObject } from 'react';
+import type { RefObject } from 'react';
 
-import { canvasStyleVars, ScaledWidgetFrame } from '@/entities/widget';
+import { ScaledWidgetFrame, WidgetSurface } from '@/entities/widget';
 import { paletteTokens, type RenderedBlock, type Widget } from '@/entities/widget/model';
-import canvasStyles from '@/entities/widget/ui/WidgetCanvas.module.css';
-import { WIDGET_WIDTH, cellSize, widgetDimensions } from '@shared/widget/geometry';
+import { WIDGET_WIDTH, blockBox, canvasPadding, widgetDimensions } from '@shared/widget/geometry';
 import { MAX_COLUMNS, dragGridRows, occupiedRows } from '@/pages/widget-editor/model/layout';
 import { EditorBlock, type BlockPointerHandlers } from '@/pages/widget-editor/ui/EditorBlock';
 import { messages, type Locale } from '@/shared/locale/content';
@@ -23,7 +22,7 @@ type EditorCanvasProps = {
   onResizeBlock: (blockId: string, width: number, height: number) => void;
 };
 
-const gridStyle = { '--grid-cell-size': `${cellSize(WIDGET_WIDTH)}px` } as CSSProperties;
+const padding = canvasPadding(WIDGET_WIDTH);
 
 /** The widget at its real size (scaled to fit), with drag, resize and selection controls. */
 export const EditorCanvas = ({
@@ -47,10 +46,11 @@ export const EditorCanvas = ({
     widget.blocks.length === 0
       ? widget.height
       : widgetDimensions([{ x: 0, y: displayRows - 1, width: 1, height: 1 }]).height;
-  const canvasStyle = {
-    ...canvasStyleVars(widget.config.palette, { width: WIDGET_WIDTH }),
-    '--widget-columns': MAX_COLUMNS,
-  } as CSSProperties;
+  const cell = (x: number, y: number) =>
+    blockBox(
+      { x, y, width: 1, height: 1 },
+      { width: WIDGET_WIDTH, height: canvasHeight, rows: displayRows },
+    );
 
   return (
     <ScaledWidgetFrame
@@ -60,53 +60,67 @@ export const EditorCanvas = ({
       elevated
       accent={paletteTokens[widget.config.palette]?.light.accent}
     >
-      <div
-        className={`${canvasStyles.canvas} ${styles.editorSurface}`}
-        style={canvasStyle}
-        data-palette-mode={widget.config.paletteMode}
-        data-interactive="true"
-      >
-        {widget.blocks.length === 0 ? (
-          <p className={canvasStyles.empty}>
-            {locale === 'ru'
-              ? 'Добавьте первый блок слева.'
-              : 'Add your first block from the library.'}
-          </p>
-        ) : (
-          <div className={styles.gridLayoutHost}>
-            <div className={styles.editorBlocks} ref={gridRef} style={gridStyle}>
-              {draggingBlockId &&
-                Array.from({ length: dropRows * MAX_COLUMNS }, (_, index) => {
-                  const x = index % MAX_COLUMNS;
-                  const y = Math.floor(index / MAX_COLUMNS);
-                  const isActive = dropCell?.x === x && dropCell.y === y;
-                  return (
-                    <div
-                      className={`${styles.dropCell} ${isActive ? styles.dropCellActive : ''}`}
-                      key={`${x}:${y}`}
-                      style={{ gridColumn: x + 1, gridRow: y + 1 }}
-                    />
-                  );
-                })}
-              {widget.blocks.map((block) => (
-                <EditorBlock
-                  key={block.id}
-                  block={block}
-                  rendered={previews[block.id]}
-                  locale={locale}
-                  selected={block.id === selectedBlockId}
-                  dragging={draggingBlockId === block.id}
-                  removeLabel={t.removeBlock}
-                  pointerHandlers={pointerHandlers}
-                  onSelect={() => onSelectBlock(block.id)}
-                  onRemove={() => onRemoveBlock(block.id)}
-                  onResize={(width, height) => onResizeBlock(block.id, width, height)}
-                />
-              ))}
-            </div>
-          </div>
+      <WidgetSurface
+        blocks={widget.blocks}
+        renderedBlocks={Object.values(previews)}
+        palette={widget.config.palette}
+        paletteMode={widget.config.paletteMode}
+        width={WIDGET_WIDTH}
+        height={canvasHeight}
+        rows={displayRows}
+        locale={locale}
+        emptyText={
+          locale === 'ru' ? 'Добавьте первый блок слева.' : 'Add your first block from the library.'
+        }
+        renderBlock={({ block, box, content }) => (
+          <EditorBlock
+            key={block.id}
+            block={block}
+            box={box}
+            selected={block.id === selectedBlockId}
+            dragging={draggingBlockId === block.id}
+            removeLabel={t.removeBlock}
+            pointerHandlers={pointerHandlers}
+            onSelect={() => onSelectBlock(block.id)}
+            onRemove={() => onRemoveBlock(block.id)}
+            onResize={(width, height) => onResizeBlock(block.id, width, height)}
+          >
+            {content}
+          </EditorBlock>
         )}
-      </div>
+      >
+        {/* Grid area used for pointer math; shows drop targets while dragging. */}
+        <div
+          ref={gridRef}
+          className={styles.dropLayer}
+          style={{
+            left: padding,
+            top: padding,
+            width: WIDGET_WIDTH - padding * 2,
+            height: canvasHeight - padding * 2,
+          }}
+        >
+          {draggingBlockId &&
+            Array.from({ length: dropRows * MAX_COLUMNS }, (_, index) => {
+              const x = index % MAX_COLUMNS;
+              const y = Math.floor(index / MAX_COLUMNS);
+              const box = cell(x, y);
+              const isActive = dropCell?.x === x && dropCell.y === y;
+              return (
+                <div
+                  className={`${styles.dropCell} ${isActive ? styles.dropCellActive : ''}`}
+                  key={`${x}:${y}`}
+                  style={{
+                    left: box.x - padding,
+                    top: box.y - padding,
+                    width: box.width,
+                    height: box.height,
+                  }}
+                />
+              );
+            })}
+        </div>
+      </WidgetSurface>
     </ScaledWidgetFrame>
   );
 };

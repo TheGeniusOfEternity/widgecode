@@ -208,11 +208,6 @@
   padding: 8px 24px 32px;
 }
 
-.editorSurface {
-  display: flex;
-  flex-direction: column;
-}
-
 .gridCells,
 .editorCanvas {
   position: relative;
@@ -255,45 +250,31 @@
   pointer-events: none;
 }
 
-.gridLayoutHost {
-  width: 100%;
-  min-width: 0;
-  overflow: visible;
-}
-.editorBlocks {
-  --grid-cell-size: minmax(110px, auto);
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: var(--grid-cell-size, minmax(110px, auto));
-  align-items: stretch;
-  gap: 18px;
-  width: 100%;
-  position: relative;
-  z-index: 2;
-  pointer-events: auto;
+/* Covers the grid area of the canvas (inside its padding); drop cells are placed absolutely. */
+.dropLayer {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
 }
 .sortableBlock {
-  position: relative;
-  min-width: 0;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
+  position: absolute;
   z-index: 2;
+  border-radius: 20px;
   cursor: pointer;
+  transition: box-shadow 160ms ease;
+}
+
+.sortableBlock:hover,
+.selectedBlock {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--widget-accent) 66%, transparent),
+    0 10px 30px color-mix(in srgb, var(--widget-accent) 12%, transparent);
 }
 .dropCell {
-  min-width: 0;
-  min-height: 0;
-  aspect-ratio: 1;
+  position: absolute;
   border: 1px dashed color-mix(in srgb, var(--widget-accent) 25%, transparent);
   border-radius: 20px;
   background: color-mix(in srgb, var(--widget-accent) 5%, transparent);
-  cursor: copy;
-  pointer-events: none;
-  transition:
-    background 150ms ease,
-    border-color 150ms ease;
-  z-index: 3;
 }
 .dropCellActive {
   border-color: var(--widget-accent);

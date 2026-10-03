@@ -60,7 +60,7 @@ server/src/
   lib/                   env, jwt, prisma singleton, AppError
 server/prisma/           schema.prisma + migrations
 client/src/              Feature-Sliced Design: app → pages → widgets → features → entities → shared
-  entities/widget/       widget types, presets, palettes (mirror server registry) and the HTML/CSS WidgetCanvas used in editor/iframe
+  entities/widget/       widget types, presets, palettes (mirror server registry); WidgetSurface/WidgetCanvas render the shared SVG parts in the browser
   pages/widget-editor/   the grid editor: model/ (layout rules, normalizeWidget, useWidgetEditor
                          = load/autosave/save race handling, useGridDrag, useBlockPreviews) + ui/ components
   shared/api/            fetch client with access-token + single-flight refresh
@@ -73,8 +73,8 @@ Server imports must use `.js` extensions (NodeNext).
 
 ## Invariants and gotchas
 
-- **One geometry, two renderers.** All widget numbers (width 600, padding, gap, square cells, block padding, typography scale, palettes, labels, stat formatting) live in `server/src/shared/widget/{geometry,theme}.ts`. The HTML canvas (`client/src/entities/widget/ui/WidgetCanvas.tsx`, used by the editor, public page and iframe) gets them as CSS custom properties via `entities/widget/lib/canvasStyle.ts`; the SVG export (`server/src/shared/widget/WidgetCanvas.tsx`) uses them directly; `widgetService` stores sizes from `widgetDimensions`. The HTML canvas always renders at the stored size and is scaled by `ScaledWidgetFrame` — never add `vw`/`cqi`/`%`-based sizes to it. See the `widget-render-parity` skill.
-- **Block types are defined twice.** Server `widgets/registry.ts` (zod schemas, presets) and client `entities/widget/model/{types,registry}.ts` (labels, ru/en descriptions). Adding a block type touches both plus `statsService` and both canvases — use the `add-block-type` skill.
+- **One renderer.** Every surface (editor, public page, iframe, `/image.svg`) draws widgets with the same SVG components in `server/src/shared/widget/` (`BlockContent`, `canvasParts`, `svgPrimitives`), using numbers from `geometry.ts`/`theme.ts`. The export composes them into one `<svg>` (`WidgetCanvas.tsx`); the browser places the background and each block as separate `<svg>`s (`client/src/entities/widget/ui/WidgetSurface.tsx`) so the editor can attach controls, and scales the whole thing with `ScaledWidgetFrame`. Text widths are estimated (`estimateTextWidth`), so truncate/wrap in SVG code, not CSS. See the `widget-render-parity` skill.
+- **Block types are defined twice.** Server `widgets/registry.ts` (zod schemas, presets) and client `entities/widget/model/{types,registry}.ts` (labels, ru/en descriptions). Rendering is written once in `shared/widget/BlockContent.tsx`. Use the `add-block-type` skill.
 - Limits: `MAX_WIDGET_BLOCKS = 5` in the registry; `MAX_GRID_COLUMNS = 2` and block height ≤ 2 in shared `geometry.ts` (re-exported by the registry). Layout validation (bounds + no overlap) runs in `widgetService.validateLayouts`.
 - Widget width is currently fixed at 600 and height is recomputed from rows by `widgetDimensions` on every update — client-supplied `width`/`height` are ignored.
 - GitHub data: profile, repositories and languages use REST (a token only raises limits; languages switch to exact GraphQL byte counts with a token). Activity, pull request and status blocks use GraphQL only and show an error without `GITHUB_TOKEN`.

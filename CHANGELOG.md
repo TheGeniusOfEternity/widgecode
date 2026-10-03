@@ -17,6 +17,7 @@ All notable changes to this project are documented here.
 
 ### Changed
 
+- The editor, public page and iframe now render widgets with the same SVG components as the image export (one renderer instead of an HTML and an SVG copy), so every surface shows exactly the same widget.
 - SVG text truncation and stat number formatting now use a per-character width estimate calibrated to the widget font (Cyrillic, bold and `%` are wider), so the SVG export cuts text in the same places as the HTML widget.
 - Split the 1,200-line widget editor into layout rules, state/autosave, drag and preview hooks, and focused UI components, and shared the embed snippet builder between the gallery and the editor.
 - Added client tests for widget rendering, scaling, editor layout rules and autosave, the API client token refresh, and the auth store.
